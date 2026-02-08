@@ -173,6 +173,15 @@ function startGame() {
     const aiCount = parseInt(document.getElementById('ai-count').value);
     const difficulty = document.getElementById('difficulty').value;
 
+    if (humanCount + aiCount < 2) {
+        alert("Minimum 2 players required!");
+        return;
+    }
+    if (humanCount + aiCount > 6) {
+        alert("Maximum 6 players allowed!");
+        return;
+    }
+
     gameState.players = [];
     gameState.deck = [];
     gameState.log = [];
@@ -479,6 +488,43 @@ async function loseInfluence(player) {
         const idx = await askHumanToLoseCard(player);
         player.loseCard(idx);
     }
+
+    if (!player.alive) {
+        await askContinue(`${player.name} has been eliminated.`);
+    }
+}
+
+function askContinue(message) {
+    return new Promise(resolve => {
+        const panel = document.getElementById('reaction-panel');
+        const title = document.getElementById('reaction-title');
+        const btns = document.getElementById('reaction-buttons');
+
+        panel.classList.remove('hidden');
+        title.innerText = message;
+        btns.innerHTML = '';
+
+        const okBtn = document.createElement('button');
+        okBtn.innerText = 'Continue';
+        okBtn.onclick = () => {
+            panel.classList.add('hidden');
+            resolve();
+        };
+        btns.appendChild(okBtn);
+    });
+}
+
+function downloadLog() {
+    const logContent = gameState.log.join('\n');
+    const blob = new Blob([logContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `coup_log_${new Date().toISOString()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 async function resolveActionEffect() {
@@ -507,29 +553,123 @@ async function resolveActionEffect() {
         case 'Exchange':
             p.cards.push(gameState.deck.pop(), gameState.deck.pop());
             log(`${p.name} exchanges cards...`);
-            // Simplicity: AI keeps random, Human keeps first 2.
+
             if(p.isAI) {
+                // Simplicity: AI keeps random
                 shuffle(p.cards);
                 while(p.cards.length > 2) {
                     gameState.deck.push(p.cards.pop());
                 }
             } else {
-                // Human Exchange UI is complex, auto-resolving for MVP
-                alert("Exchange: You drew 2, shuffling back 2 randoms (MVP limitation).");
-                shuffle(p.cards);
-                while(p.cards.length > 2) gameState.deck.push(p.cards.pop());
+                await askHumanExchange(p);
             }
             break;
     }
     nextTurn();
 }
 
+function askHumanExchange(player) {
+    return new Promise(resolve => {
+        const panel = document.getElementById('reaction-panel');
+        const title = document.getElementById('reaction-title');
+        const btns = document.getElementById('reaction-buttons');
+
+        panel.classList.remove('hidden');
+
+        // Count how many alive cards the player SHOULD have
+        // They drew 2, so current total length - 2 is their original count.
+        // Wait, dead cards are in the array too.
+        // Logic: Keep same number of ALIVE cards.
+        const totalAlive = player.cards.filter(c => !c.dead).length;
+        const toKeepCount = totalAlive - 2; // We added 2, so we need to remove 2 to get back to original count.
+        // No, totalAlive includes the 2 new ones (which are alive).
+        // Original alive count = totalAlive - 2.
+        // We want to keep Original Alive Count.
+        const keepCount = totalAlive - 2;
+
+        // If keepCount is 0 (impossible if game is running), handle gracefully?
+        // Actually, logic is: Draw 2. Choose (Original Alive) to keep.
+        // Example: Had 1 alive. Draw 2. Now 3 alive. Keep 1. Return 2.
+
+        title.innerText = `${player.name}, select ${keepCount} card(s) to KEEP:`;
+        btns.innerHTML = '';
+
+        // Render all ALIVE cards as selectable
+        // Dead cards are not exchanged, they stay.
+        // Wait, standard Coup rules: You take your influence cards (face down), add 2, shuffle, keep X.
+        // Face up (dead) cards are irrelevant to exchange, they just sit there.
+
+        const aliveCards = [];
+        const deadCards = [];
+        player.cards.forEach(c => {
+            if (c.dead) deadCards.push(c);
+            else aliveCards.push(c);
+        });
+
+        // Selected indices (from aliveCards array)
+        const selectedIndices = new Set();
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.innerText = `Confirm (0/${keepCount})`;
+        confirmBtn.disabled = true;
+        confirmBtn.onclick = () => {
+            // Reconstruct player hand
+            const keptCards = aliveCards.filter((_, i) => selectedIndices.has(i));
+            const returnedCards = aliveCards.filter((_, i) => !selectedIndices.has(i));
+
+            // Return unselected to deck
+            returnedCards.forEach(c => gameState.deck.push(c));
+            shuffle(gameState.deck);
+
+            // Update player cards: Kept + Dead
+            player.cards = [...keptCards, ...deadCards];
+
+            panel.classList.add('hidden');
+            resolve();
+        };
+
+        const cardContainer = document.createElement('div');
+        cardContainer.style.display = 'flex';
+        cardContainer.style.gap = '10px';
+        cardContainer.style.justifyContent = 'center';
+        cardContainer.style.marginBottom = '10px';
+
+        aliveCards.forEach((card, idx) => {
+            const cDiv = document.createElement('div');
+            cDiv.className = 'player-card';
+            cDiv.innerText = card.role;
+            cDiv.onclick = () => {
+                if (selectedIndices.has(idx)) {
+                    selectedIndices.delete(idx);
+                    cDiv.classList.remove('selected');
+                } else {
+                    if (selectedIndices.size < keepCount) {
+                        selectedIndices.add(idx);
+                        cDiv.classList.add('selected');
+                    }
+                }
+
+                confirmBtn.innerText = `Confirm (${selectedIndices.size}/${keepCount})`;
+                confirmBtn.disabled = selectedIndices.size !== keepCount;
+            };
+            cardContainer.appendChild(cDiv);
+        });
+
+        btns.appendChild(cardContainer);
+        btns.appendChild(confirmBtn);
+    });
+}
+
 function nextTurn() {
     // Check Winner
     const alive = gameState.players.filter(p => p.alive);
     if (alive.length === 1) {
-        alert(`${alive[0].name} WINS!`);
-        location.reload();
+        const winner = alive[0];
+        log(`${winner.name} WINS THE GAME!`, 'important');
+
+        document.getElementById('winner-name').innerText = `${winner.name} WINS!`;
+        document.getElementById('game-end-message').innerText = `${winner.isAI ? 'The Bot' : 'The Player'} has won.`;
+        document.getElementById('game-over-modal').classList.remove('hidden');
         return;
     }
 
@@ -555,6 +695,7 @@ function shuffle(array) {
     }
 }
 function log(msg, type='') {
+    gameState.log.push(msg);
     const div = document.createElement('div');
     div.className = `log-entry ${type}`;
     div.innerText = msg;
