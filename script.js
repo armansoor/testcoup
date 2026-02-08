@@ -29,6 +29,7 @@ class Player {
         this.isAI = isAI;
         this.difficulty = difficulty;
         this.alive = true;
+        this.memory = {};
     }
 
     loseCard(cardIndex) {
@@ -66,7 +67,26 @@ class Player {
         let action = 'Income';
 
         // Difficulty Logic
-        if (this.difficulty === 'hard') {
+        if (this.difficulty === 'hardcore') {
+            // GOD MODE: Win at all costs.
+            if (this.coins >= 7) { this.doCoup(); return; }
+
+            // Aggressive Assassination (High Bluff)
+            if (canAssassinate && (hasAssassin || Math.random() > 0.3)) {
+                action = 'Assassinate';
+            }
+            // Tax often (Bluff Duke)
+            else if (hasDuke || Math.random() > 0.4) {
+                action = 'Tax';
+            }
+            // Steal if Captain or desperate
+            else if (hasCaptain || Math.random() > 0.5) {
+                action = 'Steal';
+            }
+            else {
+                action = 'Foreign Aid';
+            }
+        } else if (this.difficulty === 'hard') {
             // RUTHLESS: Bluff often, maximize gain
             if (this.coins >= 7) {
                 this.doCoup(); 
@@ -112,11 +132,12 @@ class Player {
         if (!this.alive || this.id === actionObj.player.id) return false;
         
         // Don't challenge unchallengeable things
-        // Blocks are always challengeable
         if (actionObj.type !== 'Block' && !ACTIONS[actionObj.type].challengeable) return false;
 
         const bluffer = actionObj.player;
-        const threshold = this.difficulty === 'hard' ? 0.6 : 0.8; // Hard bots challenge more
+        let threshold = 0.8;
+        if (this.difficulty === 'hard') threshold = 0.6;
+        if (this.difficulty === 'hardcore') threshold = 0.4; // Very suspicious
 
         // Identify the role being claimed
         const claimedRole = actionObj.role || ACTIONS[actionObj.type]?.role;
@@ -124,25 +145,40 @@ class Player {
         if (claimedRole) {
             const myCopies = this.cards.filter(c => c.role === claimedRole && !c.dead).length;
 
-            // If I have 2 of the claimed role, it's less likely they have it (1 left in deck/others)
-            // If it's a 2-player game (or late game), probability shifts, but simple heuristic:
-            if (myCopies === 2 && this.difficulty === 'hard') {
-                return true; // Aggressive challenge
+            // Check Public Knowledge (Dead cards)
+            let deadCopies = 0;
+            gameState.players.forEach(p => {
+                p.cards.forEach(c => { if(c.dead && c.role === claimedRole) deadCopies++; });
+            });
+            const totalKnown = myCopies + deadCopies;
+
+            // ABSOLUTE PROOF (Hard & Hardcore)
+            if ((this.difficulty === 'hard' || this.difficulty === 'hardcore') && totalKnown === 3) {
+                return true; // Caught red-handed
+            }
+
+            // High Probability Challenge
+            if (this.difficulty === 'hardcore') {
+                if (totalKnown === 2) return true; // 2 gone, they claim 3rd? High risk.
+                if (myCopies === 2) return true;
+            }
+
+            if (this.difficulty === 'hard') {
+                if (myCopies === 2) return true;
             }
 
             // Heuristic for Exchange (Ambassador)
             if (claimedRole === 'Ambassador') {
-                 if (myCopies === 2) return true; // Very likely bluff
-                 if (myCopies === 1 && Math.random() > 0.7 && this.difficulty === 'hard') return true;
+                 if (myCopies === 2) return true;
+                 if (myCopies === 1 && Math.random() > 0.7 && this.difficulty !== 'easy') return true;
             }
         }
 
         // Logic: If I have the cards they claim, they might be lying
-        // E.g. They claim Duke (Tax), but I have 2 Dukes. High chance they lie.
         if (actionObj.type === 'Tax') {
             const myDukes = this.cards.filter(c => c.role === 'Duke' && !c.dead).length;
-            if (myDukes === 2) return true; // High probability lie
-            if (this.difficulty === 'hard' && myDukes === 1 && Math.random() > 0.5) return true;
+            if (myDukes === 2) return true;
+            if ((this.difficulty === 'hard' || this.difficulty === 'hardcore') && myDukes === 1 && Math.random() > 0.5) return true;
         }
 
         // Random suspicion based on difficulty
@@ -155,9 +191,10 @@ class Player {
         if (!ACTIONS[actionObj.type].blockable) return false;
 
         // Am I the target?
-        if (actionObj.target && actionObj.target.id !== this.id) return false; // Only block if I am target (mostly)
-        if (actionObj.type === 'Foreign Aid') { /* Anyone can block FA */ } 
-        else if (actionObj.target && actionObj.target.id !== this.id) return false;
+        if (actionObj.target && actionObj.target.id !== this.id) {
+             // Foreign Aid can be blocked by anyone claiming Duke
+             if (actionObj.type !== 'Foreign Aid') return false;
+        }
 
         const blockerRoles = ACTIONS[actionObj.type].blockedBy;
         const hasBlocker = this.cards.some(c => blockerRoles.includes(c.role) && !c.dead);
@@ -165,7 +202,14 @@ class Player {
         if (hasBlocker) return true; // Always block if I really can
 
         // Bluff block?
-        if (this.difficulty === 'hard' && actionObj.type === 'Assassinate' && Math.random() > 0.2) return true; // Save myself!
+        // Hardcore: Block almost always if targeted by assassination (to survive)
+        if (this.difficulty === 'hardcore') {
+            if (actionObj.type === 'Assassinate') return true; // Desperate block
+            if (actionObj.type === 'Steal' && Math.random() > 0.3) return true;
+            if (actionObj.type === 'Foreign Aid' && Math.random() > 0.5) return true;
+        }
+
+        if (this.difficulty === 'hard' && actionObj.type === 'Assassinate' && Math.random() > 0.2) return true;
         if (this.difficulty === 'hard' && actionObj.type === 'Steal' && Math.random() > 0.5) return true;
 
         return false;
@@ -460,7 +504,7 @@ async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
     const hasCard = claimedPlayer.cards.some(c => c.role === claimedRole && !c.dead);
     
     if (hasCard) {
-        log(`${claimedPlayer.name} HAS the ${claimedRole}! Challenger loses.`, 'important');
+        log(`Challenge FAILED! ${claimedPlayer.name} HAS the ${claimedRole}!`, 'important');
         // Challenger loses card
         await loseInfluence(challenger);
         
@@ -695,8 +739,8 @@ function getStrongestOpponent(me) {
     return foes.sort((a,b) => b.coins - a.coins)[0];
 }
 function shuffle(array) {
-    // Shuffle 3 times for better perceived randomness
-    for (let k = 0; k < 3; k++) {
+    // Shuffle 7 times for maximum randomness
+    for (let k = 0; k < 7; k++) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [array[i], array[j]] = [array[j], array[i]];
