@@ -117,6 +117,11 @@ class Player {
         let target = null;
         if (['Assassinate', 'Steal'].includes(action)) {
              target = getStrongestOpponent(this);
+             // Fallback if no target found (shouldn't happen but prevents crash)
+             if (!target) {
+                 action = 'Income';
+                 target = null;
+             }
         }
 
         handleActionSubmit(action, this, target);
@@ -587,16 +592,19 @@ async function resolveActionEffect() {
         case 'Foreign Aid': p.coins+=2; break;
         case 'Tax': p.coins+=3; break;
         case 'Steal': 
+            if (!t) { log('Action failed: No target.'); break; }
             const stolen = Math.min(t.coins, 2);
             t.coins -= stolen;
             p.coins += stolen;
             log(`Stole ${stolen} from ${t.name}`);
             break;
         case 'Assassinate':
+            if (!t) { log('Action failed: No target.'); break; }
             log(`${t.name} was Assassinated!`);
             await loseInfluence(t);
             break;
         case 'Coup':
+            if (!t) { log('Action failed: No target.'); break; }
             log(`${t.name} suffered a Coup!`);
             await loseInfluence(t);
             break;
