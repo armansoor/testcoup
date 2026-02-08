@@ -15,18 +15,30 @@
         
         <div class="setup-box">
             <div class="control-group">
-                <label>Opponents (AI):</label>
+                <label>Human Players:</label>
+                <select id="human-count">
+                    <option value="1">1 (Solo)</option>
+                    <option value="2">2 (Pass & Play)</option>
+                    <option value="3">3 (Pass & Play)</option>
+                    <option value="4">4 (Pass & Play)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>AI Players:</label>
                 <select id="ai-count">
-                    <option value="1">1 Bot</option>
-                    <option value="2">2 Bots</option>
-                    <option value="3" selected>3 Bots</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3" selected>3</option>
                 </select>
             </div>
 
             <div class="control-group">
-                <label>Difficulty:</label>
+                <label>AI Difficulty:</label>
                 <select id="difficulty">
-                    <option value="normal">Normal</option>
+                    <option value="easy">Easy (Random)</option>
+                    <option value="normal">Normal (Balanced)</option>
                     <option value="hard" selected>Hard (Ruthless)</option>
                 </select>
             </div>
@@ -39,23 +51,22 @@
     <div id="game-screen" class="screen">
         <div class="game-header">
             <div id="turn-indicator">Turn: Player 1</div>
-            <div>
-                <button class="small-btn" onclick="toggleRules()">Rules</button>
-                <button class="small-btn red" onclick="location.reload()">Quit</button>
-            </div>
+            <button class="small-btn" onclick="toggleRules()">Rules</button>
+            <button class="small-btn red" onclick="location.reload()">Quit</button>
         </div>
 
         <div id="game-log">
             <div class="log-entry system">Welcome to Coup.</div>
         </div>
 
-        <div id="opponents-container"></div>
+        <div id="opponents-container">
+            </div>
 
         <div id="player-area">
             <h2 id="active-player-name">Player 1</h2>
             <div class="coins-display"><span id="player-coins">0</span> Coins</div>
-            
-            <div id="player-cards" class="cards-container"></div>
+            <div id="player-cards" class="cards-container">
+                </div>
             
             <div id="action-panel">
                 <h3>Select Action</h3>
@@ -63,17 +74,16 @@
                     <button onclick="submitAction('Income')">Income (1)</button>
                     <button onclick="submitAction('Foreign Aid')">Foreign Aid (2)</button>
                     <button onclick="submitAction('Coup')">Coup (7)</button>
-                    <button onclick="submitAction('Tax')">Tax (3)</button>
-                    <button onclick="submitAction('Assassinate')">Assassinate (3)</button>
-                    <button onclick="submitAction('Steal')">Steal (2)</button>
-                    <button onclick="submitAction('Exchange')">Exchange</button>
+                    <button onclick="submitAction('Tax')">Tax (3) [Duke]</button>
+                    <button onclick="submitAction('Assassinate')">Assassinate (3) [Assassin]</button>
+                    <button onclick="submitAction('Steal')">Steal [Captain]</button>
+                    <button onclick="submitAction('Exchange')">Exchange [Ambassador]</button>
                 </div>
             </div>
 
             <div id="reaction-panel" class="hidden">
-                <h3 id="reaction-title" style="color: var(--accent);">ACTION REQUIRED</h3>
-                <p id="reaction-desc">...</p>
-                <div id="reaction-buttons" class="action-grid"></div>
+                <h3 id="reaction-title">Someone is acting...</h3>
+                <div id="reaction-buttons"></div>
             </div>
         </div>
     </div>
@@ -81,20 +91,22 @@
     <div id="rules-modal" class="modal hidden">
         <div class="modal-content">
             <h2>How to Play</h2>
+            <p><strong>Goal:</strong> Be the last player with influence (face-down cards).</p>
             <ul>
-                <li><strong>Income:</strong> +1 Coin.</li>
-                <li><strong>Foreign Aid:</strong> +2 Coins. (Blocked by Duke)</li>
-                <li><strong>Coup:</strong> Pay 7. Unblockable kill.</li>
-                <li><strong>Tax (Duke):</strong> +3 Coins.</li>
-                <li><strong>Assassinate (Assassin):</strong> Pay 3. Kill card. (Blocked by Contessa)</li>
-                <li><strong>Steal (Captain):</strong> Take 2. (Blocked by Captain/Ambassador)</li>
-                <li><strong>Exchange (Ambassador):</strong> Swap cards.</li>
+                <li><strong>Income:</strong> Take 1 coin. Cannot be blocked.</li>
+                <li><strong>Foreign Aid:</strong> Take 2 coins. Blocked by Duke.</li>
+                <li><strong>Coup:</strong> Pay 7 coins. Choose a player to lose a card. Unblockable.</li>
+                <li><strong>Tax (Duke):</strong> Take 3 coins.</li>
+                <li><strong>Assassinate (Assassin):</strong> Pay 3 coins. Choose player to lose a card. Blocked by Contessa.</li>
+                <li><strong>Steal (Captain):</strong> Take 2 coins from another. Blocked by Captain/Ambassador.</li>
+                <li><strong>Exchange (Ambassador):</strong> Draw 2 cards, return 2.</li>
             </ul>
-            <p><strong>Challenge:</strong> Catch a liar. Loser loses a card.</p>
+            <p><em>If you are caught lying in a challenge, you lose a card. If you are wrongly challenged, the challenger loses a card.</em></p>
             <button onclick="toggleRules()">Close</button>
         </div>
     </div>
 
     <script src="script.js"></script>
 </body>
-</html>
+        </html>
+        
