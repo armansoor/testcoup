@@ -317,6 +317,31 @@ function askHumanBlock(player, actionObj) {
     });
 }
 
+function askHumanToLoseCard(player) {
+    return new Promise(resolve => {
+        const panel = document.getElementById('reaction-panel');
+        const title = document.getElementById('reaction-title');
+        const btns = document.getElementById('reaction-buttons');
+
+        panel.classList.remove('hidden');
+        title.innerText = `${player.name}, choose a card to lose:`;
+        btns.innerHTML = '';
+
+        player.cards.forEach((card, idx) => {
+            if (card.dead) return;
+
+            const btn = document.createElement('button');
+            btn.innerText = card.role;
+            btn.className = 'red';
+            btn.onclick = () => {
+                panel.classList.add('hidden');
+                resolve(idx);
+            };
+            btns.appendChild(btn);
+        });
+    });
+}
+
 async function processReactions() {
     const action = gameState.currentAction;
     const actingP = action.player;
@@ -336,7 +361,12 @@ async function processReactions() {
 
             if (wantsChallenge) {
                 log(`${p.name} CHALLENGES ${actingP.name}!`, 'important');
-                resolveChallenge(actingP, p, ACTIONS[action.type].role);
+                const won = await resolveChallenge(actingP, p, ACTIONS[action.type].role);
+                if (won) {
+                     await resolveActionEffect();
+                } else {
+                     nextTurn();
+                }
                 return; // End action flow here based on outcome
             }
         }
@@ -359,9 +389,32 @@ async function processReactions() {
                 log(`${p.name} BLOCKS with ${blockerRole}!`);
                 
                 // Block can be challenged!
-                // Simplified: We assume block succeeds for now to keep code length manageable, 
-                // or we implement a "Counter-Challenge" recursion. 
-                // Let's implement specific success for brevity:
+                const challengeAction = { type: 'Block', player: p, role: blockerRole };
+                for (let challenger of gameState.players) {
+                    if (challenger.id === p.id || !challenger.alive) continue;
+
+                    let wantsChallenge = false;
+                    if (challenger.isAI) {
+                        wantsChallenge = challenger.shouldChallenge(challengeAction);
+                    } else {
+                        wantsChallenge = await askHumanChallenge(challenger, challengeAction);
+                    }
+
+                    if (wantsChallenge) {
+                        log(`${challenger.name} CHALLENGES Block!`, 'important');
+                        const won = await resolveChallenge(p, challenger, blockerRole);
+                        if (!won) {
+                            // Block failed, action proceeds
+                            await resolveActionEffect();
+                        } else {
+                            // Block succeeded
+                            log(`Action BLOCKED.`);
+                            nextTurn();
+                        }
+                        return;
+                    }
+                }
+
                 log(`Action BLOCKED.`);
                 nextTurn();
                 return;
@@ -370,17 +423,17 @@ async function processReactions() {
     }
 
     // 3. If no Challenge/Block, Resolve Action
-    resolveActionEffect();
+    await resolveActionEffect();
 }
 
-function resolveChallenge(claimedPlayer, challenger, claimedRole) {
+async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
     // Reveal logic
     const hasCard = claimedPlayer.cards.some(c => c.role === claimedRole && !c.dead);
     
     if (hasCard) {
         log(`${claimedPlayer.name} HAS the ${claimedRole}! Challenger loses.`, 'important');
         // Challenger loses card
-        loseInfluence(challenger);
+        await loseInfluence(challenger);
         
         // Claimed player swaps card
         const cardIdx = claimedPlayer.cards.findIndex(c => c.role === claimedRole && !c.dead);
@@ -388,15 +441,15 @@ function resolveChallenge(claimedPlayer, challenger, claimedRole) {
         gameState.deck.push({role: claimedRole, dead: false}); // Return old
         shuffle(gameState.deck);
         
-        resolveActionEffect(); // Action proceeds
+        return true; // Challenge lost (Blocker won)
     } else {
         log(`${claimedPlayer.name} was BLUFFING! Action fails.`, 'important');
-        loseInfluence(claimedPlayer);
-        nextTurn();
+        await loseInfluence(claimedPlayer);
+        return false; // Challenge won (Blocker lost)
     }
 }
 
-function loseInfluence(player) {
+async function loseInfluence(player) {
     if (player.isAI) {
         // AI logic: lose card revealed or random
         const aliveCards = player.cards.filter(c => !c.dead);
@@ -405,15 +458,12 @@ function loseInfluence(player) {
         const idx = player.cards.indexOf(toKill);
         player.loseCard(idx);
     } else {
-        // Human must choose. 
-        // Auto-kill first alive for simplicity in this script, or add UI prompt
-        const idx = player.cards.findIndex(c => !c.dead);
+        const idx = await askHumanToLoseCard(player);
         player.loseCard(idx);
-        alert(`You lost a card!`);
     }
 }
 
-function resolveActionEffect() {
+async function resolveActionEffect() {
     const act = gameState.currentAction;
     const p = act.player;
     const t = act.target;
@@ -430,11 +480,11 @@ function resolveActionEffect() {
             break;
         case 'Assassinate':
             log(`${t.name} was Assassinated!`);
-            loseInfluence(t);
+            await loseInfluence(t);
             break;
         case 'Coup':
             log(`${t.name} suffered a Coup!`);
-            loseInfluence(t);
+            await loseInfluence(t);
             break;
         case 'Exchange':
             p.cards.push(gameState.deck.pop(), gameState.deck.pop());
