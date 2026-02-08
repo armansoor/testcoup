@@ -112,16 +112,30 @@ class Player {
         if (!this.alive || this.id === actionObj.player.id) return false;
         
         // Don't challenge unchallengeable things
-        if (!ACTIONS[actionObj.type].challengeable) return false;
+        // Blocks are always challengeable
+        if (actionObj.type !== 'Block' && !ACTIONS[actionObj.type].challengeable) return false;
 
         const bluffer = actionObj.player;
         const threshold = this.difficulty === 'hard' ? 0.6 : 0.8; // Hard bots challenge more
+
+        // Identify the role being claimed
+        const claimedRole = actionObj.role || ACTIONS[actionObj.type]?.role;
+
+        if (claimedRole) {
+            const myCopies = this.cards.filter(c => c.role === claimedRole && !c.dead).length;
+
+            // If I have 2 of the claimed role, it's less likely they have it (1 left in deck/others)
+            // If it's a 2-player game (or late game), probability shifts, but simple heuristic:
+            if (myCopies === 2 && this.difficulty === 'hard') {
+                return true; // Aggressive challenge
+            }
+        }
 
         // Logic: If I have the cards they claim, they might be lying
         // E.g. They claim Duke (Tax), but I have 2 Dukes. High chance they lie.
         if (actionObj.type === 'Tax') {
             const myDukes = this.cards.filter(c => c.role === 'Duke' && !c.dead).length;
-            if (myDukes === 2) return true; // ABSOLUTE LIE
+            if (myDukes === 2) return true; // High probability lie
             if (this.difficulty === 'hard' && myDukes === 1 && Math.random() > 0.5) return true;
         }
 
@@ -450,9 +464,13 @@ async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
 }
 
 async function loseInfluence(player) {
+    // Safety: If player is already dead, they can't lose influence
+    if (!player.alive || player.cards.every(c => c.dead)) return;
+
     if (player.isAI) {
         // AI logic: lose card revealed or random
         const aliveCards = player.cards.filter(c => !c.dead);
+        if (aliveCards.length === 0) return; // Should be covered by above, but safe
         const toKill = aliveCards[Math.floor(Math.random() * aliveCards.length)];
         // Find actual index
         const idx = player.cards.indexOf(toKill);
