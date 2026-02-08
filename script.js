@@ -336,7 +336,12 @@ async function processReactions() {
 
             if (wantsChallenge) {
                 log(`${p.name} CHALLENGES ${actingP.name}!`, 'important');
-                resolveChallenge(actingP, p, ACTIONS[action.type].role);
+                const won = resolveChallenge(actingP, p, ACTIONS[action.type].role);
+                if (won) {
+                     resolveActionEffect();
+                } else {
+                     nextTurn();
+                }
                 return; // End action flow here based on outcome
             }
         }
@@ -359,9 +364,32 @@ async function processReactions() {
                 log(`${p.name} BLOCKS with ${blockerRole}!`);
                 
                 // Block can be challenged!
-                // Simplified: We assume block succeeds for now to keep code length manageable, 
-                // or we implement a "Counter-Challenge" recursion. 
-                // Let's implement specific success for brevity:
+                const challengeAction = { type: 'Block', player: p, role: blockerRole };
+                for (let challenger of gameState.players) {
+                    if (challenger.id === p.id || !challenger.alive) continue;
+
+                    let wantsChallenge = false;
+                    if (challenger.isAI) {
+                        wantsChallenge = challenger.shouldChallenge(challengeAction);
+                    } else {
+                        wantsChallenge = await askHumanChallenge(challenger, challengeAction);
+                    }
+
+                    if (wantsChallenge) {
+                        log(`${challenger.name} CHALLENGES Block!`, 'important');
+                        const won = resolveChallenge(p, challenger, blockerRole);
+                        if (!won) {
+                            // Block failed, action proceeds
+                            resolveActionEffect();
+                        } else {
+                            // Block succeeded
+                            log(`Action BLOCKED.`);
+                            nextTurn();
+                        }
+                        return;
+                    }
+                }
+
                 log(`Action BLOCKED.`);
                 nextTurn();
                 return;
@@ -388,11 +416,11 @@ function resolveChallenge(claimedPlayer, challenger, claimedRole) {
         gameState.deck.push({role: claimedRole, dead: false}); // Return old
         shuffle(gameState.deck);
         
-        resolveActionEffect(); // Action proceeds
+        return true; // Challenge lost (Blocker won)
     } else {
         log(`${claimedPlayer.name} was BLUFFING! Action fails.`, 'important');
         loseInfluence(claimedPlayer);
-        nextTurn();
+        return false; // Challenge won (Blocker lost)
     }
 }
 
