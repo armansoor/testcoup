@@ -62,7 +62,8 @@ button.red { background: #800; }
 @media (max-width: 600px) {
     h1 { font-size: 2.5rem; }
     .player-card { width: 60px; height: 85px; font-size: 0.8rem; }
-    button { font-size: 0.9rem; padding: 10px; }
+    button { font-size: 0.8rem; padding: 8px; white-space: normal; line-height: 1.2; }
+    .action-grid { grid-template-columns: repeat(2, 1fr); } /* Force 2 columns on small screens for better visibility */
 }
 
 /* ADDED: Selection Style for Exchange */

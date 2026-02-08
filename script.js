@@ -173,6 +173,15 @@ function startGame() {
     const aiCount = parseInt(document.getElementById('ai-count').value);
     const difficulty = document.getElementById('difficulty').value;
 
+    if (humanCount + aiCount < 2) {
+        alert("Minimum 2 players required!");
+        return;
+    }
+    if (humanCount + aiCount > 6) {
+        alert("Maximum 6 players allowed!");
+        return;
+    }
+
     gameState.players = [];
     gameState.deck = [];
     gameState.log = [];
@@ -479,6 +488,43 @@ async function loseInfluence(player) {
         const idx = await askHumanToLoseCard(player);
         player.loseCard(idx);
     }
+
+    if (!player.alive) {
+        await askContinue(`${player.name} has been eliminated.`);
+    }
+}
+
+function askContinue(message) {
+    return new Promise(resolve => {
+        const panel = document.getElementById('reaction-panel');
+        const title = document.getElementById('reaction-title');
+        const btns = document.getElementById('reaction-buttons');
+
+        panel.classList.remove('hidden');
+        title.innerText = message;
+        btns.innerHTML = '';
+
+        const okBtn = document.createElement('button');
+        okBtn.innerText = 'Continue';
+        okBtn.onclick = () => {
+            panel.classList.add('hidden');
+            resolve();
+        };
+        btns.appendChild(okBtn);
+    });
+}
+
+function downloadLog() {
+    const logContent = gameState.log.join('\n');
+    const blob = new Blob([logContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `coup_log_${new Date().toISOString()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 async function resolveActionEffect() {
@@ -618,8 +664,12 @@ function nextTurn() {
     // Check Winner
     const alive = gameState.players.filter(p => p.alive);
     if (alive.length === 1) {
-        alert(`${alive[0].name} WINS!`);
-        location.reload();
+        const winner = alive[0];
+        log(`${winner.name} WINS THE GAME!`, 'important');
+
+        document.getElementById('winner-name').innerText = `${winner.name} WINS!`;
+        document.getElementById('game-end-message').innerText = `${winner.isAI ? 'The Bot' : 'The Player'} has won.`;
+        document.getElementById('game-over-modal').classList.remove('hidden');
         return;
     }
 
@@ -645,6 +695,7 @@ function shuffle(array) {
     }
 }
 function log(msg, type='') {
+    gameState.log.push(msg);
     const div = document.createElement('div');
     div.className = `log-entry ${type}`;
     div.innerText = msg;
