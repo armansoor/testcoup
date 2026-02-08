@@ -64,3 +64,10 @@ button.red { background: #800; }
     .player-card { width: 60px; height: 85px; font-size: 0.8rem; }
     button { font-size: 0.9rem; padding: 10px; }
 }
+
+/* ADDED: Selection Style for Exchange */
+.player-card.selected {
+    border: 4px solid gold;
+    transform: translateY(-10px);
+    box-shadow: 0 0 15px gold;
+}
