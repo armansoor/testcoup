@@ -13,15 +13,11 @@ let gameState = {
     players: [],
     deck: [],
     currentPlayerIndex: 0,
-    turnPhase: 'ACTION_SELECT', // ACTION_SELECT, REACTION, RESOLVE
-    currentAction: null,
-    log: []
+    currentAction: null
 };
 
-// --- CORE CLASSES ---
-
 class Player {
-    constructor(id, name, isAI = false, difficulty = 'normal') {
+    constructor(id, name, isAI, difficulty) {
         this.id = id;
         this.name = name;
         this.coins = 2;
@@ -31,150 +27,88 @@ class Player {
         this.alive = true;
     }
 
-    loseCard(cardIndex) {
-        if (this.cards[cardIndex].dead) return;
-        this.cards[cardIndex].dead = true;
-        log(`${this.name} lost a ${this.cards[cardIndex].role}!`);
+    loseCard(index) {
+        if (!this.cards[index] || this.cards[index].dead) return;
+        this.cards[index].dead = true;
+        log(`${this.name} lost a ${this.cards[index].role}!`, 'bad');
         if (this.cards.every(c => c.dead)) {
             this.alive = false;
-            log(`${this.name} is ELIMINATED!`, 'important');
+            log(`${this.name} is ELIMINATED!`, 'bad');
         }
         updateUI();
     }
 
-    hasRole(role) {
-        return this.cards.some(c => c.role === role && !c.dead);
-    }
-    
-    // AI LOGIC CORE
+    // AI BRAIN
     async decideAction() {
         if (!this.alive) return;
-        await sleep(1000); // Thinking time
+        await sleep(1000); 
 
-        // 1. Must Coup if 10+ coins
+        // 1. Mandatory Coup
         if (this.coins >= 10) {
-            this.doCoup();
+            handleActionSubmit('Coup', this, getStrongestOpponent(this));
             return;
         }
 
-        // HEURISTICS
-        const canAssassinate = this.coins >= 3;
-        const hasDuke = this.hasRole('Duke');
-        const hasAssassin = this.hasRole('Assassin');
-        const hasCaptain = this.hasRole('Captain');
-
+        // 2. Decide Action
         let action = 'Income';
-
-        // Difficulty Logic
-        if (this.difficulty === 'hard') {
-            // RUTHLESS: Bluff often, maximize gain
-            if (this.coins >= 7) {
-                this.doCoup(); 
-                return;
-            } else if (canAssassinate && (hasAssassin || Math.random() > 0.4)) {
-                action = 'Assassinate'; // Real or bluff assassin
-            } else if (hasDuke || Math.random() > 0.3) {
-                action = 'Tax'; // Real or bluff tax
-            } else if (hasCaptain || Math.random() > 0.5) {
-                action = 'Steal';
-            } else {
-                action = 'Foreign Aid'; // Risky but fast
-            }
-        } else if (this.difficulty === 'normal') {
-            // Standard play
-            if (this.coins >= 7) { this.doCoup(); return; }
-            if (hasDuke) action = 'Tax';
-            else if (canAssassinate && hasAssassin) action = 'Assassinate';
-            else if (hasCaptain) action = 'Steal';
-            else action = 'Income';
-        } else {
-            // Easy - Random
-            const opts = ['Income', 'Foreign Aid', 'Tax'];
-            if (this.coins >= 3) opts.push('Assassinate');
-            action = opts[Math.floor(Math.random() * opts.length)];
-        }
-
-        handleActionSubmit(action, this);
-    }
-
-    doCoup() {
-        const target = getStrongestOpponent(this);
-        handleActionSubmit('Coup', this, target);
-    }
-
-    // AI DECISION: Should I Challenge?
-    shouldChallenge(actionObj) {
-        if (!this.alive || this.id === actionObj.player.id) return false;
+        let target = null;
         
-        // Don't challenge unchallengeable things
-        if (!ACTIONS[actionObj.type].challengeable) return false;
+        // Target Logic: Find someone alive who isn't me
+        const targets = gameState.players.filter(p => p.id !== this.id && p.alive);
+        if (targets.length === 0) { nextTurn(); return; } // Should trigger win condition in nextTurn
 
-        const bluffer = actionObj.player;
-        const threshold = this.difficulty === 'hard' ? 0.6 : 0.8; // Hard bots challenge more
+        const bestTarget = getStrongestOpponent(this) || targets[0];
 
-        // Logic: If I have the cards they claim, they might be lying
-        // E.g. They claim Duke (Tax), but I have 2 Dukes. High chance they lie.
-        if (actionObj.type === 'Tax') {
-            const myDukes = this.cards.filter(c => c.role === 'Duke' && !c.dead).length;
-            if (myDukes === 2) return true; // ABSOLUTE LIE
-            if (this.difficulty === 'hard' && myDukes === 1 && Math.random() > 0.5) return true;
+        if (this.difficulty === 'hard') {
+            if (this.coins >= 7) {
+                action = 'Coup';
+                target = bestTarget;
+            } else if (this.coins >= 3 && (this.hasRole('Assassin') || Math.random() > 0.4)) {
+                action = 'Assassinate';
+                target = bestTarget;
+            } else if (this.hasRole('Captain') && Math.random() > 0.3) {
+                action = 'Steal';
+                target = bestTarget;
+            } else if (this.hasRole('Duke') || Math.random() > 0.5) {
+                action = 'Tax';
+            } else {
+                action = 'Foreign Aid';
+            }
+        } else {
+            // Normal Difficulty
+            if (this.coins >= 7) { action = 'Coup'; target = bestTarget; }
+            else if (this.hasRole('Duke')) action = 'Tax';
+            else if (this.coins >= 3 && this.hasRole('Assassin')) { action = 'Assassinate'; target = bestTarget; }
+            else action = 'Income';
         }
 
-        // Random suspicion based on difficulty
-        return Math.random() > threshold;
+        handleActionSubmit(action, this, target);
     }
 
-    // AI DECISION: Should I Block?
-    shouldBlock(actionObj) {
-        if (!this.alive || this.id === actionObj.player.id) return false;
-        if (!ACTIONS[actionObj.type].blockable) return false;
-
-        // Am I the target?
-        if (actionObj.target && actionObj.target.id !== this.id) return false; // Only block if I am target (mostly)
-        if (actionObj.type === 'Foreign Aid') { /* Anyone can block FA */ } 
-        else if (actionObj.target && actionObj.target.id !== this.id) return false;
-
-        const blockerRoles = ACTIONS[actionObj.type].blockedBy;
-        const hasBlocker = this.cards.some(c => blockerRoles.includes(c.role) && !c.dead);
-
-        if (hasBlocker) return true; // Always block if I really can
-
-        // Bluff block?
-        if (this.difficulty === 'hard' && actionObj.type === 'Assassinate' && Math.random() > 0.2) return true; // Save myself!
-        if (this.difficulty === 'hard' && actionObj.type === 'Steal' && Math.random() > 0.5) return true;
-
-        return false;
-    }
+    hasRole(role) { return this.cards.some(c => c.role === role && !c.dead); }
 }
 
-// --- SETUP FUNCTIONS ---
-
+// --- SETUP ---
 function startGame() {
-    const humanCount = parseInt(document.getElementById('human-count').value);
     const aiCount = parseInt(document.getElementById('ai-count').value);
-    const difficulty = document.getElementById('difficulty').value;
+    const diff = document.getElementById('difficulty').value;
 
     gameState.players = [];
     gameState.deck = [];
-    gameState.log = [];
+    gameState.log = []; // Clear log on restart
 
-    // Create Deck (3 of each)
-    ROLES.forEach(role => {
-        for(let i=0; i<3; i++) gameState.deck.push({ role: role, dead: false });
-    });
+    ROLES.forEach(r => { for(let i=0; i<3; i++) gameState.deck.push({role: r, dead: false}); });
     shuffle(gameState.deck);
 
-    // Create Humans
-    for(let i=1; i<=humanCount; i++) {
-        gameState.players.push(new Player(i, `Player ${i}`, false));
-    }
+    // Human (Player 1)
+    gameState.players.push(new Player(1, "You", false, 'normal'));
 
-    // Create AI
+    // Bots
     for(let i=1; i<=aiCount; i++) {
-        gameState.players.push(new Player(humanCount + i, `Bot ${i}`, true, difficulty));
+        gameState.players.push(new Player(i+1, `Bot ${i}`, true, diff));
     }
 
-    // Deal Cards
+    // Deal
     gameState.players.forEach(p => {
         p.cards = [gameState.deck.pop(), gameState.deck.pop()];
     });
@@ -183,218 +117,221 @@ function startGame() {
     
     document.getElementById('lobby-screen').classList.remove('active');
     document.getElementById('game-screen').classList.add('active');
-    
     updateUI();
     playTurn();
 }
 
-// --- GAME LOOP ---
-
+// --- TURN LOGIC ---
 function playTurn() {
     const p = getCurrentPlayer();
     if (!p.alive) { nextTurn(); return; }
 
-    log(`--- ${p.name}'s Turn ---`);
     updateUI();
-
+    
     if (p.isAI) {
+        toggleControls(false); // Hide buttons
         p.decideAction();
     } else {
-        // Unlock UI for human
-        setControls(true);
+        toggleControls(true); // Show buttons
+        log("--- Your Turn ---", 'important');
     }
 }
 
-function submitAction(actionType) {
+function submitAction(type) {
     const p = getCurrentPlayer();
-    
-    // Validation
-    if (ACTIONS[actionType].cost > p.coins) {
-        alert("Not enough coins!");
-        return;
-    }
-    if (actionType === 'Coup' && p.coins < 7) return;
+    if (ACTIONS[type].cost > p.coins) { alert("Need more coins!"); return; }
 
-    // Targeting
     let target = null;
-    if (['Coup', 'Assassinate', 'Steal'].includes(actionType)) {
-        // For human, we need a simple prompt for now (simulating UI selection)
-        // In a pro version, we'd click the avatar. Here we ask name.
+    if (['Coup', 'Assassinate', 'Steal'].includes(type)) {
         const targets = gameState.players.filter(pl => pl.id !== p.id && pl.alive);
-        if (targets.length === 0) return; // Should not happen
+        // Human Target Selection (Simple Prompt)
+        let msg = `Who to ${type}?\n`;
+        targets.forEach((t, i) => msg += `${i+1}. ${t.name} (${t.coins} coins)\n`);
         
-        // Simple logic: if only 1 enemy, auto select. Else prompt.
-        if (targets.length === 1) target = targets[0];
-        else {
-            // For Pass & Play, we use a crude prompt for simplicity in this code block
-            // Ideally this would be a modal.
-            let tName = prompt(`Target for ${actionType}? (${targets.map(t=>t.name).join(', ')})`);
-            target = targets.find(t => t.name.toLowerCase() === (tName || "").toLowerCase());
-            if (!target) target = targets[0]; // Default fallback
+        let choice = prompt(msg);
+        let idx = parseInt(choice) - 1;
+        
+        if (isNaN(idx) || idx < 0 || idx >= targets.length) {
+            alert("Invalid target selection");
+            return;
         }
+        target = targets[idx];
     }
 
-    handleActionSubmit(actionType, p, target);
+    handleActionSubmit(type, p, target);
 }
 
-function handleActionSubmit(actionType, player, target = null) {
-    setControls(false); // Lock UI
-    gameState.currentAction = { type: actionType, player: player, target: target, challenge: null, block: null };
-    
-    log(`${player.name} attempts to ${actionType}${target ? ' on ' + target.name : ''}.`);
+function handleActionSubmit(type, player, target) {
+    toggleControls(false); // Lock controls
+    player.coins -= ACTIONS[type].cost; // Pay cost
+    gameState.currentAction = { type, player, target };
 
-    // DEDUCT COSTS IMMEDIATELY
-    player.coins -= ACTIONS[actionType].cost;
+    let msg = `${player.name} uses ${type}`;
+    if (target) msg += ` on ${target.name}`;
+    log(msg);
     updateUI();
 
-    // PHASE: Allow Responses (Challenge/Block)
-    // We simulate a "wait" period where AI checks triggers, or Human buttons appear
     processReactions();
 }
 
+// --- REACTION LOGIC ---
 async function processReactions() {
-    const action = gameState.currentAction;
-    const actingP = action.player;
-
-    // 1. Check for Challenges (if action is challengeable)
-    if (ACTIONS[action.type].challengeable) {
-        // Ask all other players
+    const act = gameState.currentAction;
+    
+    // 1. Challenges on the ACTION
+    if (ACTIONS[act.type].challengeable) {
         for (let p of gameState.players) {
-            if (p.id === actingP.id || !p.alive) continue;
-            
-            let wantsChallenge = false;
+            if (p.id === act.player.id || !p.alive) continue;
+
+            let challenge = false;
             if (p.isAI) {
-                wantsChallenge = p.shouldChallenge(action);
+                challenge = aiShouldChallenge(p, act);
             } else {
-                // For human, we'd ideally show a button. 
-                // SIMPLIFICATION: We skip human challenge logic in this basic version 
-                // unless we implement a complex async await UI. 
-                // To keep it "perfect" but simple: Humans only challenge via a temporary button shown for 3s.
+                challenge = (await askHuman(`Challenge ${act.player.name}'s ${act.type}?`, ['Pass', 'Challenge'])) === 'Challenge';
             }
 
-            if (wantsChallenge) {
-                log(`${p.name} CHALLENGES ${actingP.name}!`, 'important');
-                resolveChallenge(actingP, p, ACTIONS[action.type].role);
-                return; // End action flow here based on outcome
+            if (challenge) {
+                log(`${p.name} CHALLENGES!`, 'important');
+                await resolveChallenge(act.player, p, ACTIONS[act.type].role);
+                return; // Stop flow
             }
         }
     }
 
-    // 2. Check for Blocks (if action is blockable)
-    if (ACTIONS[action.type].blockable) {
-        // Usually only the target can block, except Foreign Aid (anyone)
-        const potentialBlockers = (action.type === 'Foreign Aid') 
-            ? gameState.players.filter(pl => pl.id !== actingP.id && pl.alive)
-            : (action.target ? [action.target] : []);
+    // 2. Blocks
+    if (ACTIONS[act.type].blockable) {
+        let blockers = [];
+        if (act.type === 'Foreign Aid') blockers = gameState.players.filter(p => p.id !== act.player.id && p.alive);
+        else if (act.target) blockers = [act.target];
 
-        for (let p of potentialBlockers) {
-            let wantsBlock = false;
-            if (p.isAI) wantsBlock = p.shouldBlock(action);
-            
-            if (wantsBlock) {
-                const blockerRole = ACTIONS[action.type].blockedBy[0]; // Simplification
-                log(`${p.name} BLOCKS with ${blockerRole}!`);
-                
-                // Block can be challenged!
-                // Simplified: We assume block succeeds for now to keep code length manageable, 
-                // or we implement a "Counter-Challenge" recursion. 
-                // Let's implement specific success for brevity:
-                log(`Action BLOCKED.`);
-                nextTurn();
-                return;
+        for (let p of blockers) {
+            let block = false;
+            if (p.isAI) {
+                block = aiShouldBlock(p, act);
+            } else {
+                let role = ACTIONS[act.type].blockedBy.join(' or ');
+                block = (await askHuman(`Block with ${role}?`, ['Pass', 'Block'])) === 'Block';
+            }
+
+            if (block) {
+                const claimRole = ACTIONS[act.type].blockedBy[0]; 
+                log(`${p.name} BLOCKS with ${claimRole}!`, 'important');
+
+                // 2a. Challenge the Block?
+                let counterChallenge = false;
+                if (act.player.isAI) {
+                    counterChallenge = aiShouldChallenge(act.player, { type: 'Block', role: claimRole }); 
+                } else {
+                    counterChallenge = (await askHuman(`Challenge ${p.name}'s Block (${claimRole})?`, ['Pass', 'Challenge'])) === 'Challenge';
+                }
+
+                if (counterChallenge) {
+                    log(`${act.player.name} CHALLENGES the BLOCK!`, 'important');
+                    await resolveChallenge(p, act.player, claimRole); 
+                    return;
+                } else {
+                    log("Block successful.");
+                    nextTurn();
+                    return;
+                }
             }
         }
     }
 
-    // 3. If no Challenge/Block, Resolve Action
-    resolveActionEffect();
+    // 3. Apply Effect
+    applyEffect();
 }
 
-function resolveChallenge(claimedPlayer, challenger, claimedRole) {
-    // Reveal logic
-    const hasCard = claimedPlayer.cards.some(c => c.role === claimedRole && !c.dead);
-    
+// --- RESOLUTION ---
+async function resolveChallenge(suspect, challenger, role) {
+    await sleep(600);
+    const hasCard = suspect.cards.some(c => c.role === role && !c.dead);
+
     if (hasCard) {
-        log(`${claimedPlayer.name} HAS the ${claimedRole}! Challenger loses.`, 'important');
-        // Challenger loses card
-        loseInfluence(challenger);
+        log(`${suspect.name} HAS the ${role}!`, 'bad');
+        log(`${challenger.name} loses influence.`);
         
-        // Claimed player swaps card
-        const cardIdx = claimedPlayer.cards.findIndex(c => c.role === claimedRole && !c.dead);
-        claimedPlayer.cards[cardIdx] = gameState.deck.pop(); // Swap
-        gameState.deck.push({role: claimedRole, dead: false}); // Return old
+        await killInfluence(challenger);
+
+        // Swap card
+        const idx = suspect.cards.findIndex(c => c.role === role && !c.dead);
+        suspect.cards[idx] = gameState.deck.pop();
+        gameState.deck.push({role: role, dead: false});
         shuffle(gameState.deck);
         
-        resolveActionEffect(); // Action proceeds
+        if (suspect.id === gameState.currentAction.player.id) applyEffect();
+        else nextTurn(); 
+
     } else {
-        log(`${claimedPlayer.name} was BLUFFING! Action fails.`, 'important');
-        loseInfluence(claimedPlayer);
-        nextTurn();
+        log(`${suspect.name} was BLUFFING!`, 'important');
+        log(`${suspect.name} loses influence.`);
+        await killInfluence(suspect);
+        
+        if (suspect.id === gameState.currentAction.player.id) nextTurn();
+        else applyEffect();
     }
 }
 
-function loseInfluence(player) {
-    if (player.isAI) {
-        // AI logic: lose card revealed or random
-        const aliveCards = player.cards.filter(c => !c.dead);
-        const toKill = aliveCards[Math.floor(Math.random() * aliveCards.length)];
-        // Find actual index
-        const idx = player.cards.indexOf(toKill);
-        player.loseCard(idx);
+async function killInfluence(p) {
+    if (p.isAI) {
+        const alive = p.cards.filter(c => !c.dead);
+        if (alive.length > 0) {
+            const victim = alive[Math.floor(Math.random() * alive.length)];
+            p.loseCard(p.cards.indexOf(victim));
+        }
     } else {
-        // Human must choose. 
-        // Auto-kill first alive for simplicity in this script, or add UI prompt
-        const idx = player.cards.findIndex(c => !c.dead);
-        player.loseCard(idx);
-        alert(`You lost a card!`);
+        const aliveIndices = p.cards.map((c, i) => c.dead ? -1 : i).filter(i => i !== -1);
+        if (aliveIndices.length === 0) return;
+        
+        if (aliveIndices.length === 1) {
+            alert("You lost your last card!");
+            p.loseCard(aliveIndices[0]);
+        } else {
+            let choice = prompt(`You lost a challenge! Choose card to lose:\n1. ${p.cards[0].role}\n2. ${p.cards[1].role}`);
+            if (choice === '2' && !p.cards[1].dead) p.loseCard(1);
+            else p.loseCard(0);
+        }
     }
 }
 
-function resolveActionEffect() {
+function applyEffect() {
     const act = gameState.currentAction;
     const p = act.player;
     const t = act.target;
+    
+    if (!p.alive) { nextTurn(); return; }
 
     switch(act.type) {
         case 'Income': p.coins++; break;
         case 'Foreign Aid': p.coins+=2; break;
         case 'Tax': p.coins+=3; break;
-        case 'Steal': 
-            const stolen = Math.min(t.coins, 2);
-            t.coins -= stolen;
-            p.coins += stolen;
-            log(`Stole ${stolen} from ${t.name}`);
+        case 'Steal':
+            if (t.coins > 0) {
+                let stolen = Math.min(t.coins, 2);
+                t.coins -= stolen;
+                p.coins += stolen;
+                log(`Stole ${stolen} from ${t.name}`);
+            }
             break;
         case 'Assassinate':
-            log(`${t.name} was Assassinated!`);
-            loseInfluence(t);
+            log(`${t.name} Assassinated!`, 'bad');
+            killInfluence(t);
             break;
         case 'Coup':
-            log(`${t.name} suffered a Coup!`);
-            loseInfluence(t);
+            log(`${t.name} Couped!`, 'bad');
+            killInfluence(t);
             break;
         case 'Exchange':
+            log("Exchanged cards.");
             p.cards.push(gameState.deck.pop(), gameState.deck.pop());
-            log(`${p.name} exchanges cards...`);
-            // Simplicity: AI keeps random, Human keeps first 2.
-            if(p.isAI) {
-                shuffle(p.cards);
-                while(p.cards.length > 2) {
-                    gameState.deck.push(p.cards.pop());
-                }
-            } else {
-                // Human Exchange UI is complex, auto-resolving for MVP
-                alert("Exchange: You drew 2, shuffling back 2 randoms (MVP limitation).");
-                shuffle(p.cards);
-                while(p.cards.length > 2) gameState.deck.push(p.cards.pop());
-            }
+            shuffle(p.cards);
+            while(p.cards.length > 2) gameState.deck.push(p.cards.pop());
             break;
     }
     nextTurn();
 }
 
 function nextTurn() {
-    // Check Winner
     const alive = gameState.players.filter(p => p.alive);
     if (alive.length === 1) {
         alert(`${alive[0].name} WINS!`);
@@ -410,86 +347,104 @@ function nextTurn() {
 }
 
 // --- UTILS ---
-
-function getCurrentPlayer() { return gameState.players[gameState.currentPlayerIndex]; }
-function getStrongestOpponent(me) {
-    // Target player with most coins or most cards
-    const foes = gameState.players.filter(p => p.id !== me.id && p.alive);
-    return foes.sort((a,b) => b.coins - a.coins)[0];
-}
-function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+function aiShouldChallenge(ai, actionObj) {
+    if (ai.difficulty === 'hard') {
+        const role = actionObj.role || ACTIONS[actionObj.type]?.role;
+        if (!role) return false;
+        
+        // If I have 2 of the card they claim, they are definitely lying
+        const myCount = ai.cards.filter(c => c.role === role && !c.dead).length;
+        if (myCount === 2) return true;
+        
+        return Math.random() > 0.85; 
     }
-}
-function log(msg, type='') {
-    const div = document.createElement('div');
-    div.className = `log-entry ${type}`;
-    div.innerText = msg;
-    const box = document.getElementById('game-log');
-    box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
-}
-function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
-
-function toggleRules() {
-    document.getElementById('rules-modal').classList.toggle('hidden');
+    return false;
 }
 
-// --- UI UPDATER ---
-function updateUI() {
-    const p = getCurrentPlayer();
+function aiShouldBlock(ai, act) {
+    const blockers = ACTIONS[act.type].blockedBy;
+    if (ai.cards.some(c => blockers.includes(c.role) && !c.dead)) return true;
     
-    // Header
-    document.getElementById('turn-indicator').innerText = `Turn: ${p.name}`;
-    
-    // Opponents
-    const oppContainer = document.getElementById('opponents-container');
-    oppContainer.innerHTML = '';
-    gameState.players.forEach(pl => {
-        if (pl.id === p.id && !gameState.players.every(x => x.isAI)) return; // Don't show self in opponents area if human playing
+    if (ai.difficulty === 'hard' && ['Assassinate', 'Steal'].includes(act.type)) {
+        return Math.random() > 0.4; // Bluff block
+    }
+    return false;
+}
+
+function toggleControls(show) {
+    const p = document.getElementById('action-panel');
+    const r = document.getElementById('reaction-panel');
+    if (show) { p.classList.remove('hidden'); r.classList.add('hidden'); }
+    else { p.classList.add('hidden'); r.classList.add('hidden'); }
+}
+
+function askHuman(text, options) {
+    return new Promise(resolve => {
+        const p = document.getElementById('reaction-panel');
+        document.getElementById('action-panel').classList.add('hidden');
+        p.classList.remove('hidden');
         
-        const div = document.createElement('div');
-        div.className = `opponent-card ${pl.id === p.id ? 'active-turn' : ''}`;
-        if (!pl.alive) div.style.opacity = 0.5;
-        
-        let cardHtml = '';
-        pl.cards.forEach(c => {
-            if (c.dead) cardHtml += `<span class="card-back" style="background:red"></span>`;
-            else cardHtml += `<span class="card-back"></span>`;
+        document.getElementById('reaction-title').innerText = "Action Required";
+        document.getElementById('reaction-desc').innerText = text;
+        const box = document.getElementById('reaction-buttons');
+        box.innerHTML = '';
+
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.innerText = opt;
+            if (opt === 'Challenge') btn.className = 'btn-challenge';
+            if (opt === 'Block') btn.className = 'btn-block';
+            if (opt === 'Pass') btn.className = 'btn-pass';
+            btn.onclick = () => {
+                p.classList.add('hidden');
+                resolve(opt);
+            };
+            box.appendChild(btn);
         });
+    });
+}
 
-        div.innerHTML = `
-            <div><strong>${pl.name}</strong></div>
-            <div>${pl.coins} Coins</div>
-            <div>${cardHtml}</div>
-        `;
-        oppContainer.appendChild(div);
+function updateUI() {
+    const human = gameState.players[0];
+    document.getElementById('turn-indicator').innerText = `Turn: ${getCurrentPlayer().name}`;
+    document.getElementById('player-coins').innerText = human.coins;
+
+    const cBox = document.getElementById('player-cards');
+    cBox.innerHTML = '';
+    human.cards.forEach(c => {
+        const d = document.createElement('div');
+        d.className = `player-card ${c.dead?'dead':''}`;
+        d.innerText = c.role;
+        cBox.appendChild(d);
     });
 
-    // Player Area (Only if Human is active or Pass & Play)
-    const playerArea = document.getElementById('player-area');
-    if (!p.isAI) {
-        playerArea.classList.remove('hidden');
-        document.getElementById('active-player-name').innerText = p.name;
-        document.getElementById('player-coins').innerText = p.coins;
-        
-        const cardBox = document.getElementById('player-cards');
-        cardBox.innerHTML = '';
-        p.cards.forEach((c, idx) => {
-            const cDiv = document.createElement('div');
-            cDiv.className = `player-card ${c.dead ? 'dead' : ''}`;
-            cDiv.innerText = c.role;
-            cardBox.appendChild(cDiv);
-        });
-    } else {
-        // If watching bots
-         document.getElementById('active-player-name').innerText = `${p.name} (AI) is thinking...`;
-    }
+    const oBox = document.getElementById('opponents-container');
+    oBox.innerHTML = '';
+    gameState.players.forEach(p => {
+        if (p.id === 1) return;
+        const d = document.createElement('div');
+        d.className = `opponent-card ${p.id === gameState.players[gameState.currentPlayerIndex].id ? 'active-turn' : ''} ${p.alive?'':'dead'}`;
+        let cards = '';
+        p.cards.forEach(c => cards += `<span class="card-back" style="${c.dead?'background:red':''}"></span>`);
+        d.innerHTML = `<div>${p.name}</div><div>${p.coins} 💰</div><div>${cards}</div>`;
+        oBox.appendChild(d);
+    });
 }
 
-function setControls(active) {
-    const btns = document.querySelectorAll('#action-panel button');
-    btns.forEach(b => b.disabled = !active);
+function getStrongestOpponent(me) {
+    const others = gameState.players.filter(p => p.id !== me.id && p.alive);
+    return others.sort((a,b) => b.coins - a.coins)[0];
 }
+function getCurrentPlayer() { return gameState.players[gameState.currentPlayerIndex]; }
+function shuffle(a) { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
+function log(m, t='') { 
+    const b=document.getElementById('game-log'); 
+    const d=document.createElement('div'); 
+    d.className=`log-entry ${t}`; 
+    d.innerText=m; 
+    b.appendChild(d); 
+    b.scrollTop=b.scrollHeight; 
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function toggleRules() { document.getElementById('rules-modal').classList.toggle('hidden'); }
+            
