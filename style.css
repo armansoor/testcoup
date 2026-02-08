@@ -61,9 +61,12 @@ button.red { background: #800; }
 /* Responsive */
 @media (max-width: 600px) {
     h1 { font-size: 2.5rem; }
-    .player-card { width: 60px; height: 85px; font-size: 0.8rem; }
+    .player-card { width: 50px; height: 75px; font-size: 0.7rem; } /* Slightly smaller cards */
+    .cards-container { gap: 5px; flex-wrap: wrap; } /* Allow wrapping if needed */
     button { font-size: 0.8rem; padding: 8px; white-space: normal; line-height: 1.2; }
-    .action-grid { grid-template-columns: repeat(2, 1fr); } /* Force 2 columns on small screens for better visibility */
+    .action-grid { grid-template-columns: repeat(2, 1fr); }
+    #opponents-container { flex: 0 0 auto; max-height: 150px; overflow-y: auto; } /* Prevent opponents taking too much space */
+    #game-log { flex: 1; min-height: 100px; }
 }
 
 /* ADDED: Selection Style for Exchange */

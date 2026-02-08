@@ -129,6 +129,12 @@ class Player {
             if (myCopies === 2 && this.difficulty === 'hard') {
                 return true; // Aggressive challenge
             }
+
+            // Heuristic for Exchange (Ambassador)
+            if (claimedRole === 'Ambassador') {
+                 if (myCopies === 2) return true; // Very likely bluff
+                 if (myCopies === 1 && Math.random() > 0.7 && this.difficulty === 'hard') return true;
+            }
         }
 
         // Logic: If I have the cards they claim, they might be lying
@@ -689,9 +695,12 @@ function getStrongestOpponent(me) {
     return foes.sort((a,b) => b.coins - a.coins)[0];
 }
 function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+    // Shuffle 3 times for better perceived randomness
+    for (let k = 0; k < 3; k++) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
     }
 }
 function log(msg, type='') {
