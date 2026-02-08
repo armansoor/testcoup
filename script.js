@@ -94,7 +94,12 @@ class Player {
             action = opts[Math.floor(Math.random() * opts.length)];
         }
 
-        handleActionSubmit(action, this);
+        let target = null;
+        if (['Assassinate', 'Steal'].includes(action)) {
+             target = getStrongestOpponent(this);
+        }
+
+        handleActionSubmit(action, this, target);
     }
 
     doCoup() {
@@ -252,6 +257,66 @@ function handleActionSubmit(actionType, player, target = null) {
     processReactions();
 }
 
+function askHumanChallenge(player, actionObj) {
+    return new Promise(resolve => {
+        const panel = document.getElementById('reaction-panel');
+        const title = document.getElementById('reaction-title');
+        const btns = document.getElementById('reaction-buttons');
+
+        panel.classList.remove('hidden');
+        title.innerText = `${player.name}, do you want to Challenge ${actionObj.player.name}'s ${actionObj.type}?`;
+        btns.innerHTML = '';
+
+        const yesBtn = document.createElement('button');
+        yesBtn.innerText = 'Challenge!';
+        yesBtn.className = 'red';
+        yesBtn.onclick = () => {
+            panel.classList.add('hidden');
+            resolve(true);
+        };
+
+        const noBtn = document.createElement('button');
+        noBtn.innerText = 'Pass';
+        noBtn.onclick = () => {
+            panel.classList.add('hidden');
+            resolve(false);
+        };
+
+        btns.appendChild(yesBtn);
+        btns.appendChild(noBtn);
+    });
+}
+
+function askHumanBlock(player, actionObj) {
+    return new Promise(resolve => {
+        const panel = document.getElementById('reaction-panel');
+        const title = document.getElementById('reaction-title');
+        const btns = document.getElementById('reaction-buttons');
+
+        panel.classList.remove('hidden');
+        const blockerRoles = ACTIONS[actionObj.type].blockedBy.join(' or ');
+        title.innerText = `${player.name}, do you want to Block ${actionObj.type} (claims ${blockerRoles})?`;
+        btns.innerHTML = '';
+
+        const yesBtn = document.createElement('button');
+        yesBtn.innerText = 'Block!';
+        yesBtn.onclick = () => {
+            panel.classList.add('hidden');
+            resolve(true);
+        };
+
+        const noBtn = document.createElement('button');
+        noBtn.innerText = 'Pass';
+        noBtn.onclick = () => {
+            panel.classList.add('hidden');
+            resolve(false);
+        };
+
+        btns.appendChild(yesBtn);
+        btns.appendChild(noBtn);
+    });
+}
+
 async function processReactions() {
     const action = gameState.currentAction;
     const actingP = action.player;
@@ -266,10 +331,7 @@ async function processReactions() {
             if (p.isAI) {
                 wantsChallenge = p.shouldChallenge(action);
             } else {
-                // For human, we'd ideally show a button. 
-                // SIMPLIFICATION: We skip human challenge logic in this basic version 
-                // unless we implement a complex async await UI. 
-                // To keep it "perfect" but simple: Humans only challenge via a temporary button shown for 3s.
+                wantsChallenge = await askHumanChallenge(p, action);
             }
 
             if (wantsChallenge) {
@@ -290,6 +352,7 @@ async function processReactions() {
         for (let p of potentialBlockers) {
             let wantsBlock = false;
             if (p.isAI) wantsBlock = p.shouldBlock(action);
+            else wantsBlock = await askHumanBlock(p, action);
             
             if (wantsBlock) {
                 const blockerRole = ACTIONS[action.type].blockedBy[0]; // Simplification
