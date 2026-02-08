@@ -8,9 +8,9 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto Mono', monospace; }
 
-body { background-color: var(--bg-color); color: var(--text-color); height: 100vh; overflow: hidden; }
+body { background-color: var(--bg-color); color: var(--text-color); height: 100vh; overflow-y: auto; }
 
-.screen { display: none; height: 100%; flex-direction: column; }
+.screen { display: none; min-height: 100%; flex-direction: column; }
 .screen.active { display: flex; }
 
 /* LOBBY */
@@ -48,7 +48,7 @@ button.red { background: #800; }
 .player-card.dead { opacity: 0.5; text-decoration: line-through; background: #555; }
 .player-card.selectable { border: 3px solid var(--highlight); }
 
-.action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+.action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; padding-bottom: 20px; }
 #action-panel h3, #reaction-panel h3 { margin-bottom: 10px; text-align: center; font-size: 0.9rem; color: #aaa; }
 
 .hidden { display: none !important; }
