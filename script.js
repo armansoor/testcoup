@@ -1000,6 +1000,12 @@ let netState = {
 
 // --- HOST LOGIC ---
 function initHost() {
+    const name = document.getElementById('my-player-name').value.trim();
+    if (name.length < 3) {
+        alert("Name must be at least 3 characters!");
+        return;
+    }
+
     isNetworkGame = true;
     netState.isHost = true;
 
@@ -1014,6 +1020,7 @@ function initHost() {
         document.getElementById('my-room-code').innerText = id;
         document.getElementById('connection-status').innerText = "Waiting for players...";
         document.getElementById('network-start-btn').classList.remove('hidden');
+        updateLobbyList(); // Show self immediately
     });
 
     netState.peer.on('connection', (conn) => {
@@ -1032,6 +1039,11 @@ function initHost() {
 
 // --- CLIENT LOGIC ---
 function joinGame() {
+    const name = document.getElementById('my-player-name').value.trim();
+    if (name.length < 3) {
+        alert("Name must be at least 3 characters!");
+        return;
+    }
     const hostId = document.getElementById('host-id-input').value.trim();
     if (!hostId) { alert("Please enter a Room Code"); return; }
 
@@ -1050,7 +1062,7 @@ function joinGame() {
 
         conn.on('open', () => {
             document.getElementById('connection-status').innerText = "Connected! Waiting for Host...";
-            conn.send({ type: 'JOIN', name: `Player ${id.substr(0,4)}` });
+            conn.send({ type: 'JOIN', name: name });
         });
 
         conn.on('data', (data) => handleNetworkData(data, conn));
@@ -1128,16 +1140,48 @@ function handleNetworkData(data, conn) {
 // --- LOBBY HELPERS ---
 function updateLobbyList() {
     const list = document.getElementById('connected-players-list');
-    list.innerHTML = '<li>You (Host)</li>';
+    list.innerHTML = ''; // Clear
+
+    // 1. Host (Self)
+    if (netState.isHost) {
+        const myName = document.getElementById('my-player-name').value.trim() || 'Host';
+        const li = document.createElement('li');
+        li.innerText = `${myName} (Host)`;
+        li.style.color = '#4caf50';
+        list.appendChild(li);
+    } else {
+        // Client view handled by updateClientLobby
+    }
+
+    // 2. Connected Clients
     netState.clients.forEach(c => {
         const li = document.createElement('li');
         li.innerText = c.name;
         list.appendChild(li);
     });
+
+    // 3. AI Bots (Placeholder)
+    if (netState.isHost) {
+        const aiCount = parseInt(document.getElementById('network-ai-count').value);
+        for(let i=1; i<=aiCount; i++) {
+            const li = document.createElement('li');
+            li.innerText = `Bot ${i} (AI)`;
+            li.style.color = '#aaa';
+            li.style.fontStyle = 'italic';
+            list.appendChild(li);
+        }
+    }
 }
 
 function broadcastLobbyUpdate() {
-    const names = ['Host', ...netState.clients.map(c => c.name)];
+    const hostName = document.getElementById('my-player-name').value.trim() || 'Host';
+
+    // Include Bots in the broadcast list so clients see them too
+    const bots = [];
+    const aiCount = parseInt(document.getElementById('network-ai-count').value);
+    for(let i=1; i<=aiCount; i++) bots.push(`Bot ${i} (AI)`);
+
+    const names = [`${hostName} (Host)`, ...netState.clients.map(c => c.name), ...bots];
     broadcast({ type: 'LOBBY_UPDATE', players: names });
 }
 
@@ -1172,7 +1216,8 @@ function startNetworkGame() {
     shuffle(gameState.deck);
 
     // Host is Player 1
-    const hostP = new Player(1, "Host", false);
+    const hostName = document.getElementById('my-player-name').value.trim();
+    const hostP = new Player(1, hostName, false);
     gameState.players.push(hostP);
     myPlayerId = 1;
 
@@ -1190,6 +1235,7 @@ function startNetworkGame() {
     const difficulty = document.getElementById('network-difficulty').value;
     const startId = gameState.players.length + 1;
     for(let i=0; i<aiCount; i++) {
+        // Keep Bot Names as is (Bot 1, Bot 2...)
         gameState.players.push(new Player(startId + i, `Bot ${i+1}`, true, difficulty));
     }
 

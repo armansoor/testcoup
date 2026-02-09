@@ -140,3 +140,17 @@ button.red { background: #800; }
         padding: 15px;
     }
 }
+
+/* --- CUSTOM PLAYER NAME --- */
+#my-player-name {
+    border: 1px solid #444;
+    background: #222;
+    color: white;
+    font-family: 'Roboto Mono', monospace;
+    transition: border-color 0.2s;
+}
+
+#my-player-name:focus {
+    border-color: var(--highlight);
+    outline: none;
+}
