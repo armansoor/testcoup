@@ -6,6 +6,7 @@
     <title>COUP: The Resistance</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
 
@@ -13,10 +14,18 @@
         <h1>COUP</h1>
         <p class="subtitle">Deception | Deduction | Domination</p>
         
-        <div class="setup-box">
-            <div class="control-group">
-                <label>Human Players:</label>
-                <select id="human-count">
+        <div class="setup-box" id="setup-box">
+
+            <div class="mode-selector" style="margin-bottom: 20px; text-align: center;">
+                <button id="mode-local" class="mode-btn active" onclick="switchMode('local')">Local Play</button>
+                <button id="mode-online" class="mode-btn" onclick="switchMode('online')">LAN / Online</button>
+            </div>
+
+            <!-- LOCAL PLAY CONTROLS -->
+            <div id="local-controls">
+                <div class="control-group">
+                    <label>Human Players:</label>
+                    <select id="human-count">
                     <option value="0">0 (Spectate/AI vs AI)</option>
                     <option value="1" selected>1 (Solo)</option>
                     <option value="2">2 (Pass & Play)</option>
@@ -27,31 +36,78 @@
                 </select>
             </div>
             
-            <div class="control-group">
-                <label>AI Players:</label>
-                <select id="ai-count">
-                    <option value="0">0</option>
-                    <option value="1" selected>1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                    <option value="6">6</option>
-                </select>
+                <div class="control-group">
+                    <label>AI Players:</label>
+                    <select id="ai-count">
+                        <option value="0">0</option>
+                        <option value="1" selected>1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>AI Difficulty:</label>
+                    <select id="difficulty">
+                        <option value="easy">Easy (Random)</option>
+                        <option value="normal">Normal (Balanced)</option>
+                        <option value="hard" selected>Hard (Ruthless)</option>
+                        <option value="hardcore">Hardcore (God Mode)</option>
+                    </select>
+                </div>
+
+                <button onclick="startGame()">START GAME</button>
             </div>
 
-            <div class="control-group">
-                <label>AI Difficulty:</label>
-                <select id="difficulty">
-                    <option value="easy">Easy (Random)</option>
-                    <option value="normal">Normal (Balanced)</option>
-                    <option value="hard" selected>Hard (Ruthless)</option>
-                    <option value="hardcore">Hardcore (God Mode)</option>
-                </select>
+            <!-- ONLINE PLAY CONTROLS -->
+            <div id="online-controls" class="hidden">
+                <div class="control-group" style="text-align:center;">
+                    <button class="secondary" onclick="initHost()">Create Game (Host)</button>
+                    <div style="margin: 10px 0;">- OR -</div>
+                    <input type="text" id="host-id-input" placeholder="Paste Room Code Here" style="width: 100%; box-sizing: border-box; text-align: center; margin-bottom: 10px;">
+                    <button class="secondary" onclick="joinGame()">Join Game</button>
+                </div>
+
+                <div id="lobby-status" class="hidden" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 10px;">
+                    <div id="host-room-info" class="hidden">
+                        <p style="font-size: 0.9rem; color: #aaa;">Share this Room Code:</p>
+                        <div id="my-room-code" style="font-size: 1.2rem; font-weight: bold; user-select: text; background: #222; padding: 10px; border-radius: 5px; word-break: break-all;">Generating...</div>
+
+                        <div class="control-group" style="margin-top: 15px;">
+                            <label>AI Bots to Add:</label>
+                            <select id="network-ai-count">
+                                <option value="0" selected>0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label>Difficulty:</label>
+                            <select id="network-difficulty">
+                                <option value="normal">Normal</option>
+                                <option value="hard">Hard</option>
+                                <option value="hardcore">Hardcore</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <h3>Players in Lobby:</h3>
+                    <ul id="connected-players-list" style="list-style: none; padding: 0; text-align: left; background: #222; padding: 10px; border-radius: 5px;">
+                        <li>You (Host)</li>
+                    </ul>
+
+                    <p id="connection-status" style="color: #4CAF50;"></p>
+
+                    <button id="network-start-btn" class="hidden" onclick="startNetworkGame()" style="margin-top: 10px; background: #4CAF50;">START GAME</button>
+                </div>
             </div>
 
-            <button onclick="startGame()">START GAME</button>
-            <button class="secondary" onclick="toggleRules()">HOW TO PLAY</button>
+            <button class="secondary" onclick="toggleRules()" style="margin-top: 10px;">HOW TO PLAY</button>
         </div>
     </div>
 

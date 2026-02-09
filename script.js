@@ -38,12 +38,14 @@ class Player {
         this.cards[cardIndex].dead = true;
         log(`${this.name} lost a ${this.cards[cardIndex].role}!`);
         updateUI();
+        broadcastState();
         await sleep(1500);
 
         if (this.cards.every(c => c.dead)) {
             this.alive = false;
             log(`${this.name} is ELIMINATED!`, 'important');
             updateUI();
+            broadcastState();
         }
     }
 
@@ -291,17 +293,52 @@ function playTurn() {
 
     log(`--- ${p.name}'s Turn ---`);
     updateUI();
+    broadcastState();
 
     if (p.isAI) {
         p.decideAction();
+    } else if (p.isRemote) {
+        // Remote player turn: Wait for network message
+        setControls(false);
     } else {
-        // Unlock UI for human
-        setControls(true);
+        // Local Human (Host or Offline Pass & Play)
+        // If network game, only unlock if it is MY turn
+        if (isNetworkGame) {
+            if (p.id === myPlayerId) setControls(true);
+            else setControls(false);
+        } else {
+            setControls(true);
+        }
     }
 }
 
 function submitAction(actionType) {
     const p = getCurrentPlayer();
+
+    // NETWORK CLIENT LOGIC
+    if (isNetworkGame && !netState.isHost) {
+        if (p.id !== myPlayerId) return; // Not my turn
+        if (ACTIONS[actionType].cost > p.coins) { alert("Not enough coins!"); return; }
+        if (actionType === 'Coup' && p.coins < 7) return;
+
+        let targetId = null;
+        if (['Coup', 'Assassinate', 'Steal'].includes(actionType)) {
+             const targets = gameState.players.filter(pl => pl.id !== p.id && pl.alive);
+             if (targets.length === 1) targetId = targets[0].id;
+             else {
+                 let tName = prompt(`Target for ${actionType}? (${targets.map(t=>t.name).join(', ')})`);
+                 const t = targets.find(t => t.name.toLowerCase() === (tName || "").toLowerCase());
+                 targetId = t ? t.id : targets[0].id;
+             }
+        }
+
+        netState.hostConn.send({
+            type: 'ACTION',
+            action: actionType,
+            targetId: targetId
+        });
+        return;
+    }
     
     // Validation
     if (ACTIONS[actionType].cost > p.coins) {
@@ -344,6 +381,7 @@ function handleActionSubmit(actionType, player, target = null) {
     // DEDUCT COSTS IMMEDIATELY
     player.coins -= ACTIONS[actionType].cost;
     updateUI();
+    broadcastState();
 
     // PHASE: Allow Responses (Challenge/Block)
     // We simulate a "wait" period where AI checks triggers, or Human buttons appear
@@ -449,7 +487,7 @@ async function processReactions() {
             if (p.isAI) {
                 wantsChallenge = p.shouldChallenge(action);
             } else {
-                wantsChallenge = await askHumanChallenge(p, action);
+                wantsChallenge = await requestChallenge(p, action);
             }
 
             if (wantsChallenge) {
@@ -475,7 +513,7 @@ async function processReactions() {
         for (let p of potentialBlockers) {
             let wantsBlock = false;
             if (p.isAI) wantsBlock = p.shouldBlock(action);
-            else wantsBlock = await askHumanBlock(p, action);
+            else wantsBlock = await requestBlock(p, action);
             
             if (wantsBlock) {
                 const blockerRole = ACTIONS[action.type].blockedBy[0]; // Simplification
@@ -490,7 +528,7 @@ async function processReactions() {
                     if (challenger.isAI) {
                         wantsChallenge = challenger.shouldChallenge(challengeAction);
                     } else {
-                        wantsChallenge = await askHumanChallenge(challenger, challengeAction);
+                        wantsChallenge = await requestChallenge(challenger, challengeAction);
                     }
 
                     if (wantsChallenge) {
@@ -525,6 +563,7 @@ async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
     
     if (hasCard) {
         log(`Challenge FAILED! ${claimedPlayer.name} HAS the ${claimedRole}!`, 'important');
+        broadcastState();
         await sleep(1500);
         // Challenger loses card
         await loseInfluence(challenger);
@@ -534,10 +573,12 @@ async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
         claimedPlayer.cards[cardIdx] = gameState.deck.pop(); // Swap
         gameState.deck.push({role: claimedRole, dead: false}); // Return old
         shuffle(gameState.deck);
+        broadcastState();
         
         return true; // Challenge lost (Blocker won)
     } else {
         log(`${claimedPlayer.name} was BLUFFING! Action fails.`, 'important');
+        broadcastState();
         await sleep(1500);
         await loseInfluence(claimedPlayer);
         return false; // Challenge won (Blocker lost)
@@ -557,7 +598,7 @@ async function loseInfluence(player) {
         const idx = player.cards.indexOf(toKill);
         await player.loseCard(idx);
     } else {
-        const idx = await askHumanToLoseCard(player);
+        const idx = await requestLoseCard(player);
         await player.loseCard(idx);
     }
 
@@ -630,6 +671,7 @@ async function resolveActionEffect() {
         case 'Exchange':
             p.cards.push(gameState.deck.pop(), gameState.deck.pop());
             log(`${p.name} exchanges cards...`);
+            broadcastState(); // Sync cards so client has 4
 
             if(p.isAI) {
                 // Simplicity: AI keeps random, but only ALIVE cards
@@ -645,10 +687,29 @@ async function resolveActionEffect() {
 
                 p.cards = [...alive, ...dead];
             } else {
-                await askHumanExchange(p);
+                const keptIndices = await requestExchange(p);
+
+                // Deck Logic (Moved from askHumanExchange)
+                // Reconstruct logic based on indices
+                // Note: askHumanExchange must return indices relative to ALIVE cards array
+                const alive = [];
+                const dead = [];
+                p.cards.forEach(c => {
+                    if (c.dead) dead.push(c);
+                    else alive.push(c);
+                });
+
+                const kept = alive.filter((_, i) => keptIndices.includes(i));
+                const returned = alive.filter((_, i) => !keptIndices.includes(i));
+
+                returned.forEach(c => gameState.deck.push(c));
+                shuffle(gameState.deck);
+
+                p.cards = [...kept, ...dead];
             }
             break;
     }
+    broadcastState();
     nextTurn();
 }
 
@@ -660,34 +721,16 @@ function askHumanExchange(player) {
 
         panel.classList.remove('hidden');
 
-        // Count how many alive cards the player SHOULD have
-        // They drew 2, so current total length - 2 is their original count.
-        // Wait, dead cards are in the array too.
         // Logic: Keep same number of ALIVE cards.
         const totalAlive = player.cards.filter(c => !c.dead).length;
-        const toKeepCount = totalAlive - 2; // We added 2, so we need to remove 2 to get back to original count.
-        // No, totalAlive includes the 2 new ones (which are alive).
-        // Original alive count = totalAlive - 2.
-        // We want to keep Original Alive Count.
         const keepCount = totalAlive - 2;
-
-        // If keepCount is 0 (impossible if game is running), handle gracefully?
-        // Actually, logic is: Draw 2. Choose (Original Alive) to keep.
-        // Example: Had 1 alive. Draw 2. Now 3 alive. Keep 1. Return 2.
 
         title.innerText = `${player.name}, select ${keepCount} card(s) to KEEP:`;
         btns.innerHTML = '';
 
-        // Render all ALIVE cards as selectable
-        // Dead cards are not exchanged, they stay.
-        // Wait, standard Coup rules: You take your influence cards (face down), add 2, shuffle, keep X.
-        // Face up (dead) cards are irrelevant to exchange, they just sit there.
-
         const aliveCards = [];
-        const deadCards = [];
         player.cards.forEach(c => {
-            if (c.dead) deadCards.push(c);
-            else aliveCards.push(c);
+            if (!c.dead) aliveCards.push(c);
         });
 
         // Selected indices (from aliveCards array)
@@ -697,19 +740,9 @@ function askHumanExchange(player) {
         confirmBtn.innerText = `Confirm (0/${keepCount})`;
         confirmBtn.disabled = true;
         confirmBtn.onclick = () => {
-            // Reconstruct player hand
-            const keptCards = aliveCards.filter((_, i) => selectedIndices.has(i));
-            const returnedCards = aliveCards.filter((_, i) => !selectedIndices.has(i));
-
-            // Return unselected to deck
-            returnedCards.forEach(c => gameState.deck.push(c));
-            shuffle(gameState.deck);
-
-            // Update player cards: Kept + Dead
-            player.cards = [...keptCards, ...deadCards];
-
+            // Return selected INDICES relative to alive array
             panel.classList.add('hidden');
-            resolve();
+            resolve(Array.from(selectedIndices));
         };
 
         const cardContainer = document.createElement('div');
@@ -807,7 +840,22 @@ function updateUI() {
     const oppContainer = document.getElementById('opponents-container');
     oppContainer.innerHTML = '';
     gameState.players.forEach(pl => {
-        if (pl.id === p.id && !gameState.players.every(x => x.isAI)) return; // Don't show self in opponents area if human playing
+        // Filter out the player shown in the main area
+        let shouldHide = false;
+        if (isNetworkGame) {
+            if (pl.id === myPlayerId) shouldHide = true;
+        } else {
+            // Local: Hide current player if human (Pass & Play)
+            // Or if Single Player, hide the single human (Player 1)
+            const humans = gameState.players.filter(x => !x.isAI);
+            if (humans.length === 1) {
+                 if (pl.id === humans[0].id) shouldHide = true;
+            } else {
+                 if (pl.id === p.id && !p.isAI) shouldHide = true;
+            }
+        }
+
+        if (shouldHide) return;
         
         const div = document.createElement('div');
         div.className = `opponent-card ${pl.id === p.id ? 'active-turn' : ''}`;
@@ -827,48 +875,88 @@ function updateUI() {
         oppContainer.appendChild(div);
     });
 
-    // Player Area (Only if Human is active or Pass & Play)
+    // Player Area
     const playerArea = document.getElementById('player-area');
-    const humans = gameState.players.filter(pl => !pl.isAI);
+    playerArea.classList.add('hidden'); // Default hidden
 
-    // Case 1: Single Player (Always show Human Hand)
-    if (humans.length === 1) {
-        const human = humans[0];
+    let me = null;
+    if (isNetworkGame) {
+        me = gameState.players.find(pl => pl.id === myPlayerId);
+    } else {
+        const humans = gameState.players.filter(pl => !pl.isAI);
+        if (humans.length === 1) me = humans[0];
+        else if (!p.isAI) me = p; // Pass & Play active
+    }
+
+    if (me) {
         playerArea.classList.remove('hidden');
 
-        let statusText = human.name;
-        if (p.isAI) statusText += " (Opponent's Turn)";
+        let statusText = me.name;
+        if (p.id !== me.id) statusText += ` (Waiting for ${p.name})`;
+        else statusText += " (Your Turn)";
 
         document.getElementById('active-player-name').innerText = statusText;
-        document.getElementById('player-coins').innerText = human.coins;
+        document.getElementById('player-coins').innerText = me.coins;
 
         const cardBox = document.getElementById('player-cards');
         cardBox.innerHTML = '';
-        human.cards.forEach((c, idx) => {
-            const cDiv = document.createElement('div');
-            cDiv.className = `player-card ${c.dead ? 'dead' : ''}`;
-            cDiv.innerText = c.role;
-            cardBox.appendChild(cDiv);
-        });
-    }
-    // Case 2: Pass & Play (Show Active Human)
-    else if (!p.isAI) {
-        playerArea.classList.remove('hidden');
-        document.getElementById('active-player-name').innerText = p.name;
-        document.getElementById('player-coins').innerText = p.coins;
-        
-        const cardBox = document.getElementById('player-cards');
-        cardBox.innerHTML = '';
-        p.cards.forEach((c, idx) => {
+        me.cards.forEach((c, idx) => {
             const cDiv = document.createElement('div');
             cDiv.className = `player-card ${c.dead ? 'dead' : ''}`;
             cDiv.innerText = c.role;
             cardBox.appendChild(cDiv);
         });
     } else {
-        // If watching bots
+         // Watching bots only
+         playerArea.classList.remove('hidden');
          document.getElementById('active-player-name').innerText = `${p.name} (AI) is thinking...`;
          document.getElementById('player-cards').innerHTML = '';
+    }
+}
+
+// --- INTERACTION REQUEST HANDLER (Client) ---
+async function handleInteractionRequest(data) {
+    // data = { reqId, requestType, args }
+    const p = gameState.players.find(pl => pl.id === data.args.playerId);
+    let response = null;
+
+    switch(data.requestType) {
+        case 'CHALLENGE': {
+            const actor = gameState.players.find(pl => pl.id === data.args.actionPlayerId);
+            const actionObj = {
+                type: data.args.actionType,
+                player: actor,
+                role: data.args.role
+            };
+            response = await askHumanChallenge(p, actionObj);
+            break;
+        }
+        case 'BLOCK': {
+            const actorB = gameState.players.find(pl => pl.id === data.args.actionPlayerId);
+            const actionObjB = {
+                type: data.args.actionType,
+                player: actorB,
+                role: data.args.role,
+                target: data.args.targetId ? gameState.players.find(pl => pl.id === data.args.targetId) : null
+            };
+            response = await askHumanBlock(p, actionObjB);
+            break;
+        }
+        case 'LOSE_CARD':
+            response = await askHumanToLoseCard(p);
+            break;
+
+        case 'EXCHANGE':
+            response = await askHumanExchange(p);
+            break;
+    }
+
+    if (netState.hostConn && netState.hostConn.open) {
+        netState.hostConn.send({
+            type: 'INTERACTION_RESPONSE',
+            reqId: data.reqId,
+            response: response
+        });
     }
 }
 
@@ -876,3 +964,418 @@ function setControls(active) {
     const btns = document.querySelectorAll('#action-panel button');
     btns.forEach(b => b.disabled = !active);
     }
+
+// --- LOBBY UI LOGIC ---
+
+function switchMode(mode) {
+    const localBtn = document.getElementById('mode-local');
+    const onlineBtn = document.getElementById('mode-online');
+    const localControls = document.getElementById('local-controls');
+    const onlineControls = document.getElementById('online-controls');
+
+    if (mode === 'local') {
+        localBtn.classList.add('active');
+        onlineBtn.classList.remove('active');
+        localControls.classList.remove('hidden');
+        onlineControls.classList.add('hidden');
+    } else {
+        localBtn.classList.remove('active');
+        onlineBtn.classList.add('active');
+        localControls.classList.add('hidden');
+        onlineControls.classList.remove('hidden');
+    }
+}
+
+// --- NETWORK MODULE ---
+
+let isNetworkGame = false;
+let myPlayerId = null; // Used for rendering perspective (Host=1, Clients=assigned)
+let netState = {
+    peer: null,
+    hostConn: null, // Client's connection to host
+    clients: [], // Host's list of { id, conn, name }
+    isHost: false,
+    pendingRequests: {} // Map of request ID to resolve function
+};
+
+// --- HOST LOGIC ---
+function initHost() {
+    isNetworkGame = true;
+    netState.isHost = true;
+
+    document.getElementById('online-controls').classList.add('hidden');
+    document.getElementById('lobby-status').classList.remove('hidden');
+    document.getElementById('host-room-info').classList.remove('hidden');
+    document.getElementById('connection-status').innerText = "Initializing Network...";
+
+    netState.peer = new Peer(); // Auto-generate ID
+
+    netState.peer.on('open', (id) => {
+        document.getElementById('my-room-code').innerText = id;
+        document.getElementById('connection-status').innerText = "Waiting for players...";
+        document.getElementById('network-start-btn').classList.remove('hidden');
+    });
+
+    netState.peer.on('connection', (conn) => {
+        conn.on('open', () => {
+            console.log("New connection:", conn.peer);
+        });
+        conn.on('data', (data) => handleNetworkData(data, conn));
+        conn.on('close', () => {
+            netState.clients = netState.clients.filter(c => c.conn !== conn);
+            updateLobbyList();
+            broadcastLobbyUpdate();
+        });
+    });
+}
+
+// --- CLIENT LOGIC ---
+function joinGame() {
+    const hostId = document.getElementById('host-id-input').value.trim();
+    if (!hostId) { alert("Please enter a Room Code"); return; }
+
+    isNetworkGame = true;
+    netState.isHost = false;
+
+    document.getElementById('online-controls').classList.add('hidden');
+    document.getElementById('lobby-status').classList.remove('hidden');
+    document.getElementById('connection-status').innerText = "Connecting to Host...";
+
+    netState.peer = new Peer();
+
+    netState.peer.on('open', (id) => {
+        const conn = netState.peer.connect(hostId);
+        netState.hostConn = conn;
+
+        conn.on('open', () => {
+            document.getElementById('connection-status').innerText = "Connected! Waiting for Host...";
+            conn.send({ type: 'JOIN', name: `Player ${id.substr(0,4)}` });
+        });
+
+        conn.on('data', (data) => handleNetworkData(data, conn));
+
+        conn.on('close', () => {
+            alert("Disconnected from Host");
+            location.reload();
+        });
+
+        conn.on('error', (err) => {
+            console.error(err);
+            alert("Connection Error: " + err);
+            location.reload();
+        });
+    });
+}
+
+function handleNetworkData(data, conn) {
+    // console.log("Received:", data);
+
+    if (netState.isHost) {
+        // HOST HANDLING
+        switch(data.type) {
+            case 'JOIN':
+                netState.clients.push({
+                    id: conn.peer,
+                    conn: conn,
+                    name: data.name
+                });
+                updateLobbyList();
+                broadcastLobbyUpdate();
+                break;
+            case 'ACTION':
+                // Client submitting an action
+                // Find player
+                const p = gameState.players.find(pl => pl.peerId === conn.peer);
+                if (p && gameState.players[gameState.currentPlayerIndex].id === p.id) {
+                    // Inject target by Name look up (since ID matches)
+                    let target = null;
+                    if (data.targetId) {
+                        target = gameState.players.find(pl => pl.id === data.targetId);
+                    }
+                    handleActionSubmit(data.action, p, target);
+                }
+                break;
+            case 'INTERACTION_RESPONSE':
+                // Client responding to Challenge/Block query
+                // Resolve the pending promise
+                if (netState.pendingRequests[data.reqId]) {
+                    netState.pendingRequests[data.reqId](data.response);
+                    delete netState.pendingRequests[data.reqId];
+                }
+                break;
+        }
+    } else {
+        // CLIENT HANDLING
+        switch(data.type) {
+            case 'LOBBY_UPDATE':
+                updateClientLobby(data.players);
+                break;
+            case 'GAME_START':
+                myPlayerId = data.playerId;
+                setupClientGame(data.state);
+                break;
+            case 'STATE_UPDATE':
+                syncClientState(data.state);
+                break;
+            case 'INTERACTION_REQUEST':
+                handleInteractionRequest(data);
+                break;
+        }
+    }
+}
+
+// --- LOBBY HELPERS ---
+function updateLobbyList() {
+    const list = document.getElementById('connected-players-list');
+    list.innerHTML = '<li>You (Host)</li>';
+    netState.clients.forEach(c => {
+        const li = document.createElement('li');
+        li.innerText = c.name;
+        list.appendChild(li);
+    });
+}
+
+function broadcastLobbyUpdate() {
+    const names = ['Host', ...netState.clients.map(c => c.name)];
+    broadcast({ type: 'LOBBY_UPDATE', players: names });
+}
+
+function updateClientLobby(names) {
+    const list = document.getElementById('connected-players-list');
+    list.innerHTML = '';
+    names.forEach(n => {
+        const li = document.createElement('li');
+        li.innerText = n;
+        list.appendChild(li);
+    });
+}
+
+function broadcast(msg) {
+    netState.clients.forEach(c => {
+        if(c.conn && c.conn.open) c.conn.send(msg);
+    });
+}
+
+function startNetworkGame() {
+    if (!netState.isHost) return;
+
+    // 1. Setup Players
+    gameState.players = [];
+    gameState.deck = [];
+    gameState.log = [];
+
+    // Deck
+    ROLES.forEach(role => {
+        for(let i=0; i<3; i++) gameState.deck.push({ role: role, dead: false });
+    });
+    shuffle(gameState.deck);
+
+    // Host is Player 1
+    const hostP = new Player(1, "Host", false);
+    gameState.players.push(hostP);
+    myPlayerId = 1;
+
+    // Clients
+    netState.clients.forEach((c, idx) => {
+        const pid = idx + 2;
+        const p = new Player(pid, c.name || `Player ${pid}`, false);
+        p.isRemote = true; // Flag for logic
+        p.peerId = c.id;   // Map back to connection
+        gameState.players.push(p);
+    });
+
+    // AI
+    const aiCount = parseInt(document.getElementById('network-ai-count').value);
+    const difficulty = document.getElementById('network-difficulty').value;
+    const startId = gameState.players.length + 1;
+    for(let i=0; i<aiCount; i++) {
+        gameState.players.push(new Player(startId + i, `Bot ${i+1}`, true, difficulty));
+    }
+
+    // Deal
+    gameState.players.forEach(p => {
+        p.cards = [gameState.deck.pop(), gameState.deck.pop()];
+    });
+
+    gameState.currentPlayerIndex = 0;
+
+    // UI Switch for Host
+    document.getElementById('lobby-screen').classList.remove('active');
+    document.getElementById('game-screen').classList.add('active');
+
+    // Broadcast Start
+    netState.clients.forEach(c => {
+        const p = gameState.players.find(pl => pl.peerId === c.id);
+        c.conn.send({
+            type: 'GAME_START',
+            playerId: p.id,
+            state: serializeState()
+        });
+    });
+
+    updateUI();
+    playTurn();
+}
+
+function setupClientGame(initialState) {
+    document.getElementById('lobby-screen').classList.remove('active');
+    document.getElementById('game-screen').classList.add('active');
+
+    // Load State
+    syncClientState(initialState);
+}
+
+function serializeState() {
+    // Create a copy of gameState safe for JSON
+    // We need to handle circular refs (like currentAction.player)
+    // and remove hidden info if we wanted to be secure, but for now we trust clients.
+
+    const s = {
+        players: gameState.players.map(p => ({
+            id: p.id,
+            name: p.name,
+            coins: p.coins,
+            cards: p.cards, // Full cards (client must hide opponent's)
+            isAI: p.isAI,
+            alive: p.alive,
+            lastAction: p.lastAction,
+            isRemote: p.isRemote, // preserve flags
+            peerId: p.peerId
+        })),
+        currentPlayerIndex: gameState.currentPlayerIndex,
+        turnPhase: gameState.turnPhase,
+        log: gameState.log,
+        currentAction: null
+    };
+
+    if (gameState.currentAction) {
+        s.currentAction = {
+            type: gameState.currentAction.type,
+            playerId: gameState.currentAction.player.id, // Send ID instead of Obj
+            targetId: gameState.currentAction.target ? gameState.currentAction.target.id : null,
+            role: gameState.currentAction.role
+        };
+    }
+
+    return s;
+}
+
+function syncClientState(remoteState) {
+    // Reconstruct gameState from remoteState
+    gameState.log = remoteState.log;
+    gameState.currentPlayerIndex = remoteState.currentPlayerIndex;
+    gameState.turnPhase = remoteState.turnPhase;
+
+    // Sync Players
+    // We overwrite local players array with data
+    // Important: UI depends on this data structure
+    gameState.players = remoteState.players.map(rp => {
+        // We don't need full Player class instance methods on Client
+        // Just the properties for updateUI
+        return rp;
+    });
+
+    // Re-link currentAction
+    if (remoteState.currentAction) {
+        const p = gameState.players.find(pl => pl.id === remoteState.currentAction.playerId);
+        const t = remoteState.currentAction.targetId ? gameState.players.find(pl => pl.id === remoteState.currentAction.targetId) : null;
+        gameState.currentAction = {
+            type: remoteState.currentAction.type,
+            player: p,
+            target: t,
+            role: remoteState.currentAction.role
+        };
+    } else {
+        gameState.currentAction = null;
+    }
+
+    // Refresh Logs
+    const logBox = document.getElementById('game-log');
+    logBox.innerHTML = '';
+    gameState.log.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = 'log-entry'; // Type lost in serialization?
+        // We didn't serialize type. Improvements for later.
+        div.innerText = msg;
+        logBox.appendChild(div);
+    });
+    logBox.scrollTop = logBox.scrollHeight;
+
+    updateUI();
+}
+
+function broadcastState() {
+    if (!netState.isHost) return;
+    const s = serializeState();
+    broadcast({ type: 'STATE_UPDATE', state: s });
+}
+
+
+// --- NETWORK INTERACTION WRAPPERS ---
+
+function requestChallenge(player, actionObj) {
+    if (player.isRemote) {
+        return sendInteractionRequest(player, 'CHALLENGE', {
+            playerId: player.id,
+            actionPlayerId: actionObj.player.id,
+            actionType: actionObj.type,
+            role: actionObj.role // claimed role
+        });
+    } else {
+        return askHumanChallenge(player, actionObj);
+    }
+}
+
+function requestBlock(player, actionObj) {
+    if (player.isRemote) {
+        return sendInteractionRequest(player, 'BLOCK', {
+            playerId: player.id,
+            actionPlayerId: actionObj.player.id,
+            actionType: actionObj.type,
+            role: actionObj.role,
+            targetId: actionObj.target ? actionObj.target.id : null
+        });
+    } else {
+        return askHumanBlock(player, actionObj);
+    }
+}
+
+function requestLoseCard(player) {
+    if (player.isRemote) {
+        return sendInteractionRequest(player, 'LOSE_CARD', {
+            playerId: player.id
+        });
+    } else {
+        return askHumanToLoseCard(player);
+    }
+}
+
+function requestExchange(player) {
+    if (player.isRemote) {
+        return sendInteractionRequest(player, 'EXCHANGE', {
+            playerId: player.id
+        });
+    } else {
+        return askHumanExchange(player);
+    }
+}
+
+function sendInteractionRequest(player, type, args) {
+    return new Promise(resolve => {
+        const reqId = Date.now() + Math.random().toString();
+        netState.pendingRequests[reqId] = resolve;
+
+        const client = netState.clients.find(c => c.id === player.peerId);
+        if (client && client.conn) {
+            client.conn.send({
+                type: 'INTERACTION_REQUEST',
+                reqId: reqId,
+                requestType: type,
+                args: args
+            });
+        } else {
+            console.error("Client not found for interaction:", player.name);
+            resolve(null); // Fallback
+        }
+    });
+}
