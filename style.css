@@ -14,7 +14,8 @@ body { background-color: var(--bg-color); color: var(--text-color); height: 100v
 .screen.active { display: flex; }
 
 /* LOBBY */
-#lobby-screen { justify-content: center; align-items: center; text-align: center; }
+#lobby-screen { justify-content: center; align-items: center; text-align: center; background-color: var(--bg-color); z-index: 50; }
+#history-screen { justify-content: center; align-items: center; text-align: center; background-color: var(--bg-color); z-index: 60; }
 h1 { font-size: 4rem; color: var(--accent); letter-spacing: 5px; margin-bottom: 0.5rem; }
 .subtitle { color: #888; margin-bottom: 2rem; }
 .setup-box { background: var(--card-bg); padding: 2rem; border-radius: 10px; border: 1px solid #444; width: 90%; max-width: 400px; }
