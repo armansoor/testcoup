@@ -9,30 +9,37 @@ A web-based implementation of the popular board game **Coup**, built with vanill
 In **Coup**, you are the head of a family in an Italian city-state run by a weak and corrupt court. You need to manipulate, bluff, and bribe your way to power. Your object is to destroy the influence of all other families, forcing them into exile. Only one family will survive.
 
 This implementation features:
--   **Single Player**: Play against AI bots.
--   **Multiplayer**: Support for up to 6 players in "Pass & Play" mode.
--   **AI Opponents**: Bots with different strategies and difficulty levels.
+-   **Single Player**: Play against up to 5 AI bots.
+-   **Multiplayer**: "Pass & Play" support for up to 6 human players.
+-   **Spectator Mode**: Watch AI vs AI battles.
 -   **Responsive Design**: Playable on desktop and mobile devices.
 
 ## ✨ Features
 
 -   **5 Character Roles**: Duke, Assassin, Captain, Ambassador, Contessa.
 -   **7 Actions**: Income, Foreign Aid, Coup, Tax, Assassinate, Steal, Exchange.
--   **AI Difficulty Levels**:
-    -   **Easy**: Makes random moves.
-    -   **Normal**: Balanced play, basic strategy.
-    -   **Hard**: Aggressive, bluffs often, and challenges suspicious plays.
-    -   **Hardcore**: "God Mode" – almost omniscient, ruthless, and highly calculated.
 -   **Game Log**: Tracks all actions and events during the game.
 -   **Downloadable Logs**: Save the game history as a text file after the match ends.
+
+## 🤖 AI Opponents
+
+The game features advanced AI logic with four distinct difficulty levels:
+
+-   **Easy (Random)**: Makes random moves. Unpredictable but generally weak.
+-   **Normal (Balanced)**: Follows basic strategy. Takes Income/Tax when safe, Coups when rich.
+-   **Hard (Ruthless)**: Bluffs frequently, blocks aggressively, and tracks known cards to make informed Challenges.
+-   **Hardcore (God Mode)**: Almost omniscient. Tracks every revealed card in the game (the "dead pile") to mathematically disprove impossible claims. Highly aggressive and calculated.
 
 ## 🚀 How to Play
 
 ### Setup
 1.  Open the game in your browser.
-2.  Select the number of **Human Players** (for local multiplayer) and **AI Players**.
-3.  Choose the **AI Difficulty**.
-4.  Click **START GAME**.
+2.  Select the number of **Human Players**.
+    -   *Select 0 to spectate a bot-only game.*
+    -   *Select 2-6 for local "Pass & Play" multiplayer.*
+3.  Select the number of **AI Players**.
+4.  Choose the **AI Difficulty**.
+5.  Click **START GAME**.
 
 ### Rules Summary
 -   Each player starts with **2 coins** and **2 influence cards** (face down).
@@ -93,13 +100,6 @@ Then navigate to `http://localhost:8000`.
 ```bash
 npx http-server .
 ```
-
-## 🤖 AI Logic
-
-The AI decision-making process is handled in the `Player` class within `script.js`. Bots evaluate their hand, coin count, and the game state to choose actions. Higher difficulty levels incorporate:
--   **Bluffing Heuristics**: Calculating the risk/reward of lying about a role.
--   **Memory**: Tracking revealed cards to deduce probabilities.
--   **Aggression**: Prioritizing elimination of the strongest opponent.
 
 ## 📝 License
 
