@@ -27,6 +27,7 @@ button:disabled { background: #555; cursor: not-allowed; }
 button.secondary { background: transparent; border: 1px solid #555; }
 button.small-btn { width: auto; padding: 5px 10px; font-size: 0.8rem; }
 button.red { background: #800; }
+button.disabled-force { opacity: 0.3; pointer-events: none; }
 
 /* GAME BOARD */
 .game-header { display: flex; justify-content: space-between; padding: 10px; background: #000; align-items: center; }

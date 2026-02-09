@@ -113,14 +113,24 @@
             </div>
 
             <button class="secondary" onclick="toggleRules()" style="margin-top: 10px;">HOW TO PLAY</button>
+            <button class="secondary" onclick="showHistory()" style="margin-top: 10px;">MATCH HISTORY</button>
         </div>
+    </div>
+
+    <div id="history-screen" class="screen">
+        <h1>HISTORY</h1>
+        <div id="history-list" style="overflow-y: auto; max-height: 70vh; width: 90%; max-width: 600px; margin: 0 auto; background: #222; padding: 10px; border-radius: 5px;">
+            <!-- History Items Injected Here -->
+        </div>
+        <button onclick="document.getElementById('history-screen').classList.remove('active'); document.getElementById('lobby-screen').classList.add('active');" style="margin-top: 20px; max-width: 200px; align-self: center;">BACK</button>
     </div>
 
     <div id="game-screen" class="screen">
         <div class="game-header">
             <div id="turn-indicator">Turn: Player 1</div>
             <button class="small-btn" onclick="toggleRules()">Rules</button>
-            <button class="small-btn red" onclick="location.reload()">Quit</button>
+            <button id="quit-btn" class="small-btn red" onclick="location.reload()">Quit</button>
+            <button id="exit-replay-btn" class="small-btn red hidden" onclick="exitReplay()">Exit Replay</button>
         </div>
 
         <div id="game-log">
@@ -152,6 +162,12 @@
             <div id="reaction-panel" class="hidden">
                 <h3 id="reaction-title">Someone is acting...</h3>
                 <div id="reaction-buttons"></div>
+            </div>
+
+            <div id="replay-controls" class="hidden" style="display: flex; justify-content: space-around; margin-top: 10px; background: #222; padding: 10px; border-top: 1px solid #444;">
+                <button onclick="replayPrev()" style="width: auto;">&lt; Prev</button>
+                <span id="replay-step" style="align-self: center;">0 / 0</span>
+                <button onclick="replayNext()" style="width: auto;">Next &gt;</button>
             </div>
         </div>
     </div>

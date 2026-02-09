@@ -15,8 +15,13 @@ let gameState = {
     currentPlayerIndex: 0,
     turnPhase: 'ACTION_SELECT', // ACTION_SELECT, REACTION, RESOLVE
     currentAction: null,
-    log: []
+    log: [],
+    replayData: []
 };
+
+let isReplayMode = false;
+let activeReplayData = [];
+let currentReplayIndex = 0;
 
 // --- CORE CLASSES ---
 
@@ -254,6 +259,7 @@ function startGame() {
     gameState.players = [];
     gameState.deck = [];
     gameState.log = [];
+    gameState.replayData = [];
 
     // Create Deck (3 of each)
     ROLES.forEach(role => {
@@ -314,6 +320,12 @@ function playTurn() {
 
 function submitAction(actionType) {
     const p = getCurrentPlayer();
+
+    // FORCED COUP CHECK
+    if (p.coins >= 10 && actionType !== 'Coup') {
+        alert("You have 10+ coins. You MUST Coup!");
+        return;
+    }
 
     // NETWORK CLIENT LOGIC
     if (isNetworkGame && !netState.isHost) {
@@ -572,14 +584,33 @@ async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
         
         // Claimed player swaps card
         const cardIdx = claimedPlayer.cards.findIndex(c => c.role === claimedRole && !c.dead);
-        claimedPlayer.cards[cardIdx] = gameState.deck.pop(); // Swap
-        gameState.deck.push({role: claimedRole, dead: false}); // Return old
+        const oldCard = claimedPlayer.cards[cardIdx];
+
+        // Return old card to deck FIRST
+        gameState.deck.push(oldCard);
+
+        // Shuffle
         shuffle(gameState.deck);
+
+        // Draw NEW card
+        claimedPlayer.cards[cardIdx] = gameState.deck.pop();
+
         broadcastState();
         
         return true; // Challenge lost (Blocker won)
     } else {
         log(`${claimedPlayer.name} was BLUFFING! Action fails.`, 'important');
+
+        // REFUND RULE: If Assassin is challenged and loses, they get coins back.
+        // We must check if the challenge was on the Action (Actor is claimedPlayer)
+        // and if the action was Assassinate.
+        if (gameState.currentAction &&
+            gameState.currentAction.player.id === claimedPlayer.id &&
+            gameState.currentAction.type === 'Assassinate') {
+                log("Assassin refunded 3 coins.");
+                claimedPlayer.coins += 3;
+        }
+
         broadcastState();
         await sleep(1500);
         await loseInfluence(claimedPlayer);
@@ -799,6 +830,8 @@ function nextTurn() {
         document.getElementById('winner-name').innerText = `${winner.name} WINS!`;
         document.getElementById('game-end-message').innerText = `${winner.isAI ? 'The Bot' : 'The Player'} has won.`;
         document.getElementById('game-over-modal').classList.remove('hidden');
+
+        saveMatchHistory(winner);
         return;
     }
 
@@ -876,7 +909,13 @@ function updateUI() {
         let cardHtml = '';
         pl.cards.forEach(c => {
             if (c.dead) cardHtml += `<span class="card-back" style="background:red"></span>`;
-            else cardHtml += `<span class="card-back"></span>`;
+            else {
+                if (isReplayMode) {
+                    cardHtml += `<span class="card-back" style="width:auto; min-width:30px; background:#ddd; color:#000; font-size:0.5rem; line-height:38px; overflow:hidden; vertical-align:middle;">${c.role.substr(0,3)}</span>`;
+                } else {
+                    cardHtml += `<span class="card-back"></span>`;
+                }
+            }
         });
 
         div.innerHTML = `
@@ -974,8 +1013,26 @@ async function handleInteractionRequest(data) {
 
 function setControls(active) {
     const btns = document.querySelectorAll('#action-panel button');
-    btns.forEach(b => b.disabled = !active);
+    btns.forEach(b => {
+        b.disabled = !active;
+        b.classList.remove('disabled-force');
+    });
+
+    if (active) {
+        // Forced Coup Check
+        const p = getCurrentPlayer();
+        // If local human (or if network game and it's my turn, checked by caller context usually,
+        // but let's be safe: we only call setControls(true) when it IS our turn).
+        if (p && p.coins >= 10) {
+             btns.forEach(b => {
+                 if (b.innerText.indexOf('Coup') === -1) {
+                     b.disabled = true;
+                     b.classList.add('disabled-force'); // Optional styling
+                 }
+             });
+        }
     }
+}
 
 // --- LOBBY UI LOGIC ---
 
@@ -1165,6 +1222,8 @@ function handleGameOver(data) {
     document.getElementById('winner-name').innerText = `${data.winnerName} WINS!`;
     document.getElementById('game-end-message').innerText = `${data.isAI ? 'The Bot' : 'The Player'} has won.`;
     document.getElementById('game-over-modal').classList.remove('hidden');
+
+    saveMatchHistory({ name: data.winnerName });
 }
 
 // --- LOBBY HELPERS ---
@@ -1201,6 +1260,135 @@ function updateLobbyList() {
             list.appendChild(li);
         }
     }
+}
+
+// --- REPLAY SYSTEM ---
+
+function saveMatchHistory(winner) {
+    const entry = {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        winner: winner.name,
+        players: gameState.players.map(p => p.name),
+        log: gameState.log,
+        replayData: gameState.replayData || []
+    };
+
+    let history = [];
+    try {
+        const stored = localStorage.getItem('coup_match_history');
+        if (stored) history = JSON.parse(stored);
+    } catch(e) { console.error(e); }
+
+    // Add new (unshift)
+    history.unshift(entry);
+    if (history.length > 20) history.pop(); // Limit 20
+
+    try {
+        localStorage.setItem('coup_match_history', JSON.stringify(history));
+        console.log("Match saved to history.");
+    } catch(e) { console.error("Failed to save history (quota exceeded?)", e); }
+}
+
+function showHistory() {
+    document.getElementById('lobby-screen').classList.remove('active');
+    document.getElementById('history-screen').classList.add('active');
+
+    const list = document.getElementById('history-list');
+    list.innerHTML = '';
+
+    let history = [];
+    try {
+        const stored = localStorage.getItem('coup_match_history');
+        if (stored) history = JSON.parse(stored);
+    } catch(e) {}
+
+    if (history.length === 0) {
+        list.innerHTML = '<p>No history found.</p>';
+        return;
+    }
+
+    history.forEach((entry, idx) => {
+        const div = document.createElement('div');
+        div.style.background = '#333';
+        div.style.padding = '10px';
+        div.style.marginBottom = '10px';
+        div.style.borderRadius = '5px';
+        div.style.border = '1px solid #444';
+
+        const date = new Date(entry.date).toLocaleString();
+        div.innerHTML = `
+            <div style="font-weight:bold; color:#4caf50;">Winner: ${entry.winner}</div>
+            <div style="font-size:0.8rem; color:#aaa;">${date}</div>
+            <div style="font-size:0.8rem;">Players: ${entry.players.join(', ')}</div>
+            <button class="small-btn" onclick="loadReplay(${idx})" style="margin-top:5px; background:#2196F3; width: auto;">Watch Replay</button>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function loadReplay(idx) {
+    let history = [];
+    try {
+        const stored = localStorage.getItem('coup_match_history');
+        if (stored) history = JSON.parse(stored);
+    } catch(e) {}
+
+    const entry = history[idx];
+    if (!entry || !entry.replayData || entry.replayData.length === 0) {
+        alert("Replay data missing or empty.");
+        return;
+    }
+
+    // Setup Replay Mode
+    isReplayMode = true;
+    activeReplayData = entry.replayData;
+    currentReplayIndex = 0;
+
+    document.getElementById('history-screen').classList.remove('active');
+    document.getElementById('game-screen').classList.add('active');
+    document.getElementById('replay-controls').classList.remove('hidden');
+    document.getElementById('quit-btn').classList.add('hidden');
+    document.getElementById('exit-replay-btn').classList.remove('hidden');
+    document.getElementById('action-panel').classList.add('hidden'); // Hide controls
+
+    // Load first frame
+    renderReplayFrame();
+}
+
+function renderReplayFrame() {
+    if (currentReplayIndex < 0) currentReplayIndex = 0;
+    if (currentReplayIndex >= activeReplayData.length) currentReplayIndex = activeReplayData.length - 1;
+
+    const state = activeReplayData[currentReplayIndex];
+    syncClientState(state); // Reuse client sync logic to load state!
+
+    // Update Step Counter
+    document.getElementById('replay-step').innerText = `${currentReplayIndex + 1} / ${activeReplayData.length}`;
+
+    // Hide controls again (syncClientState might allow them if it thinks it's my turn)
+    document.getElementById('action-panel').classList.add('hidden');
+}
+
+function replayNext() {
+    if (currentReplayIndex < activeReplayData.length - 1) {
+        currentReplayIndex++;
+        renderReplayFrame();
+    }
+}
+
+function replayPrev() {
+    if (currentReplayIndex > 0) {
+        currentReplayIndex--;
+        renderReplayFrame();
+    }
+}
+
+function exitReplay() {
+    isReplayMode = false;
+    activeReplayData = [];
+    currentReplayIndex = 0;
+    location.reload();
 }
 
 function broadcastLobbyUpdate() {
@@ -1246,6 +1434,7 @@ function startNetworkGame() {
     gameState.players = [];
     gameState.deck = [];
     gameState.log = [];
+    gameState.replayData = [];
 
     // Deck
     ROLES.forEach(role => {
@@ -1305,6 +1494,8 @@ function startNetworkGame() {
 function setupClientGame(initialState) {
     document.getElementById('lobby-screen').classList.remove('active');
     document.getElementById('game-screen').classList.add('active');
+
+    gameState.replayData = [];
 
     // Load State
     syncClientState(initialState);
@@ -1387,12 +1578,31 @@ function syncClientState(remoteState) {
     logBox.scrollTop = logBox.scrollHeight;
 
     updateUI();
+
+    // CAPTURE REPLAY (CLIENT)
+    if (!isReplayMode) {
+        if (!gameState.replayData) gameState.replayData = [];
+        // We want the current gameState as seen by client
+        // Note: serializeState() creates a snapshot.
+        // Client sees what it sees (hidden cards for others). Replay will reflect that.
+        const snap = serializeState();
+        snap.timestamp = Date.now();
+        gameState.replayData.push(snap);
+    }
 }
 
 function broadcastState() {
-    if (!netState.isHost) return;
+    // CAPTURE REPLAY (HOST / LOCAL)
+    // We capture every broadcast state, which corresponds to every significant UI update.
     const s = serializeState();
-    broadcast({ type: 'STATE_UPDATE', state: s });
+    s.timestamp = Date.now();
+
+    if (!gameState.replayData) gameState.replayData = [];
+    gameState.replayData.push(s);
+
+    if (isNetworkGame && netState.isHost) {
+        broadcast({ type: 'STATE_UPDATE', state: s });
+    }
 }
 
 
