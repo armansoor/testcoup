@@ -30,6 +30,7 @@ class Player {
         this.difficulty = difficulty;
         this.alive = true;
         this.memory = {};
+        this.lastAction = null;
     }
 
     async loseCard(cardIndex) {
@@ -146,6 +147,14 @@ class Player {
         let threshold = 0.8;
         if (this.difficulty === 'hard') threshold = 0.6;
         if (this.difficulty === 'hardcore') threshold = 0.4; // Very suspicious
+
+        // REPEATED ACTION SUSPICION
+        // If the player performs the same claimable action consecutively, increase suspicion
+        // (Decrease threshold, making it more likely to challenge)
+        if (bluffer.lastAction === actionObj.type && ACTIONS[actionObj.type].role) {
+             threshold -= 0.2; // 20% more likely to challenge repeated claims
+             if (actionObj.type === 'Exchange') threshold -= 0.1; // Exchange is extra suspicious if repeated
+        }
 
         // Identify the role being claimed
         const claimedRole = actionObj.role || ACTIONS[actionObj.type]?.role;
@@ -327,6 +336,9 @@ function handleActionSubmit(actionType, player, target = null) {
     setControls(false); // Lock UI
     gameState.currentAction = { type: actionType, player: player, target: target, challenge: null, block: null };
     
+    // Track history for AI analysis
+    player.lastAction = actionType;
+
     log(`${player.name} attempts to ${actionType}${target ? ' on ' + target.name : ''}.`);
 
     // DEDUCT COSTS IMMEDIATELY
