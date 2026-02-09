@@ -1,57 +1,64 @@
 # Coup: The Resistance
 
-A web-based implementation of the popular board game **Coup**, built with vanilla HTML, CSS, and JavaScript. Challenge your friends in "Pass & Play" mode or face off against AI opponents with adjustable difficulty levels.
+A web-based implementation of the popular board game **Coup**, built with vanilla HTML, CSS, and JavaScript. Challenge your friends in "Pass & Play" mode, connect for an Online / LAN game, or face off against AI opponents with adjustable difficulty levels.
 
 [**Play the Live Demo**](https://armansoor.github.io/testcoup/)
 
-## 🎮 Game Overview
+## 🎮 Game Modes
 
-In **Coup**, you are the head of a family in an Italian city-state run by a weak and corrupt court. You need to manipulate, bluff, and bribe your way to power. Your object is to destroy the influence of all other families, forcing them into exile. Only one family will survive.
-
-This implementation features:
--   **Single Player**: Play against up to 5 AI bots.
--   **Multiplayer**: "Pass & Play" support for up to 6 human players.
+-   **Single Player**: Play against up to 5 AI bots with distinct personalities.
+-   **Pass & Play**: Local multiplayer on a single device for up to 6 players.
+-   **Online / LAN Multiplayer**: Host and join games over the internet or local network (Peer-to-Peer).
 -   **Spectator Mode**: Watch AI vs AI battles.
--   **Responsive Design**: Playable on desktop and mobile devices.
 
 ## ✨ Features
 
 -   **5 Character Roles**: Duke, Assassin, Captain, Ambassador, Contessa.
--   **7 Actions**: Income, Foreign Aid, Coup, Tax, Assassinate, Steal, Exchange.
--   **Game Log**: Tracks all actions and events during the game.
--   **Downloadable Logs**: Save the game history as a text file after the match ends.
+-   **Advanced AI**: Four difficulty levels ranging from Random to "God Mode" (Hardcore).
+-   **Game Log**: Tracks all actions and events, downloadable as a text file.
+-   **Responsive Design**: Optimized for desktop and mobile play.
+
+## 🌐 Online / LAN Multiplayer
+
+Play with friends on different devices! This mode uses Peer-to-Peer (WebRTC) connections.
+
+### How to Host
+1.  Open the game and select **"Online / LAN"**.
+2.  Click **"Host Game"**.
+3.  Share the generated **Room Code** with your friends.
+4.  Once everyone has joined, configure the game settings (AI count, difficulty) and click **"Start Game"**.
+
+### How to Join
+1.  Open the game and select **"Online / LAN"**.
+2.  Enter the **Room Code** provided by the host.
+3.  Click **"Join Game"**.
+4.  Wait for the host to start the match.
+
+> **Note:** An active internet connection is required to establish the initial connection (signaling). After connecting, gameplay is peer-to-peer. Supports 2-6 players total (Humans + AI).
 
 ## 🤖 AI Opponents
 
-The game features advanced AI logic with four distinct difficulty levels:
-
--   **Easy (Random)**: Makes random moves. Unpredictable but generally weak.
--   **Normal (Balanced)**: Follows basic strategy. Takes Income/Tax when safe, Coups when rich.
--   **Hard (Ruthless)**: Bluffs frequently, blocks aggressively, and tracks known cards to make informed Challenges.
--   **Hardcore (God Mode)**: Almost omniscient. Tracks every revealed card in the game (the "dead pile") to mathematically disprove impossible claims. Highly aggressive and calculated.
+-   **Easy (Random)**: Makes random moves. Unpredictable.
+-   **Normal (Balanced)**: Standard strategy. Taking Income/Tax when safe.
+-   **Hard (Ruthless)**: Bluffs frequently and tracks known cards.
+-   **Hardcore (God Mode)**: Mathematically tracks every card to disprove impossible claims.
 
 ## 🚀 How to Play
 
 ### Setup
-1.  Open the game in your browser.
-2.  Select the number of **Human Players**.
-    -   *Select 0 to spectate a bot-only game.*
-    -   *Select 2-6 for local "Pass & Play" multiplayer.*
-3.  Select the number of **AI Players**.
-4.  Choose the **AI Difficulty**.
-5.  Click **START GAME**.
+1.  Choose your mode: **Single Player**, **Pass & Play**, or **Online**.
+2.  Configure the number of players and AI difficulty.
+3.  Start the game!
 
 ### Rules Summary
--   Each player starts with **2 coins** and **2 influence cards** (face down).
--   On your turn, choose an action.
--   **Character Actions** (Tax, Assassinate, Steal, Exchange) require claiming a specific character role. You can **bluff** if you don't have the card!
--   Other players can **Challenge** your claim.
-    -   If caught lying, you lose a card.
-    -   If you were telling the truth, the challenger loses a card.
--   Some actions can be **Blocked** by specific characters (e.g., Captain blocks Steal). Blocks can also be challenged.
--   The last player with influence (cards) wins!
+-   Start with **2 coins** and **2 influence cards**.
+-   On your turn, choose an action. Character actions (Tax, Assassinate, etc.) require claiming a role.
+-   **Bluffing** is encouraged! If challenged and caught, you lose a card.
+-   **Challenges**: If someone claims a role they don't have, you can Challenge. Loser of the challenge loses a card.
+-   **Blocks**: Specific roles can block actions (e.g., Contessa blocks Assassination).
+-   Last player with influence wins!
 
-### Actions & Counteractions
+### Actions Reference
 | Action | Effect | Cost | Claim | Blocked By |
 | :--- | :--- | :--- | :--- | :--- |
 | **Income** | Take 1 coin | - | - | - |
@@ -62,45 +69,15 @@ The game features advanced AI logic with four distinct difficulty levels:
 | **Steal** | Take 2 coins from another player | - | Captain | Captain / Ambassador |
 | **Exchange** | Draw 2 cards, return 2 to deck | - | Ambassador | - |
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack & Running Locally
 
--   **HTML5**: Structure and layout.
--   **CSS3**: Styling, animations, and responsive design (Flexbox/Grid).
--   **JavaScript (ES6+)**: Game logic, AI behavior, DOM manipulation.
+Built with **HTML5**, **CSS3**, and **JavaScript (ES6+)**. No build process required.
 
-## 📂 Project Structure
-
-```
-.
-├── index.html      # Main game interface and structure
-├── script.js       # Core game logic, AI implementation, and UI updates
-├── style.css       # Visual styling and responsive layout
-└── README.md       # Project documentation
-```
-
-## 🔧 Installation & Running
-
-Since this is a static web application, no build process is required.
-
-### Local Execution
-1.  Clone or download the repository.
-2.  Open `index.html` in your web browser.
-
-### Development Server (Optional)
-For a better experience (avoiding CORS issues with some browsers/features), use a simple HTTP server:
-
-**Using Python:**
-```bash
-# Python 3
-python -m http.server 8000
-```
-Then navigate to `http://localhost:8000`.
-
-**Using Node.js (http-server):**
-```bash
-npx http-server .
-```
+**To run locally:**
+1.  Clone the repository.
+2.  Open `index.html` directly in your browser.
+3.  *(Optional)* Use a local server (e.g., `python -m http.server`) for better performance.
 
 ## 📝 License
 
-This project is open-source and available for personal and educational use. Enjoy the game!
+Open-source for personal and educational use.
