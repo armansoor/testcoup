@@ -610,6 +610,12 @@ function showHistory() {
     });
 }
 
+function showHistoryFromModal() {
+    // Hide Modal first
+    document.getElementById('game-over-modal').classList.add('hidden');
+    showHistory();
+}
+
 function closeHistory() {
     document.getElementById('history-screen').classList.remove('active');
     // Determine where to go back to.
