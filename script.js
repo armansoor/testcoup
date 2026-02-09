@@ -247,6 +247,11 @@ function startGame() {
     const aiCount = parseInt(document.getElementById('ai-count').value);
     const difficulty = document.getElementById('difficulty').value;
 
+    // Ensure we are in Local mode
+    isNetworkGame = false;
+    netState.isHost = false;
+    netState.peer = null;
+
     if (humanCount + aiCount < 2) {
         alert("Minimum 2 players required!");
         return;
@@ -1113,6 +1118,17 @@ function switchMode(mode) {
 
 let isNetworkGame = false;
 let myPlayerId = null; // Used for rendering perspective (Host=1, Clients=assigned)
+
+const PEER_CONFIG = {
+    config: {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' }
+        ]
+    },
+    debug: 1
+};
+
 let netState = {
     peer: null,
     hostConn: null, // Client's connection to host
@@ -1141,7 +1157,12 @@ function initHost() {
     document.getElementById('host-room-info').classList.remove('hidden');
     document.getElementById('connection-status').innerText = "Initializing Network...";
 
-    netState.peer = new Peer(); // Auto-generate ID
+    netState.peer = new Peer(null, PEER_CONFIG); // Auto-generate ID
+
+    netState.peer.on('error', (err) => {
+        console.error("PeerJS Error:", err);
+        alert("Network Error: " + err.type);
+    });
 
     netState.peer.on('open', (id) => {
         document.getElementById('my-room-code').innerText = id;
@@ -1161,6 +1182,16 @@ function initHost() {
             broadcastLobbyUpdate();
             markPlayerDisconnected(conn.peer);
         });
+    });
+}
+
+function copyRoomCode() {
+    const code = document.getElementById('my-room-code').innerText;
+    navigator.clipboard.writeText(code).then(() => {
+        alert("Room Code copied to clipboard!");
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+        alert("Failed to copy code.");
     });
 }
 
@@ -1186,7 +1217,7 @@ function joinGame() {
     document.getElementById('connection-status').innerText = "Connecting to Host...";
     document.getElementById('connected-players-list').innerHTML = ''; // Clear stale list
 
-    netState.peer = new Peer();
+    netState.peer = new Peer(null, PEER_CONFIG);
 
     netState.peer.on('error', (err) => {
         console.error("PeerJS Error:", err);
