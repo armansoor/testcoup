@@ -1003,7 +1003,7 @@ function initHost() {
     isNetworkGame = true;
     netState.isHost = true;
 
-    document.getElementById('online-controls').classList.add('hidden');
+    document.getElementById('online-actions').classList.add('hidden');
     document.getElementById('lobby-status').classList.remove('hidden');
     document.getElementById('host-room-info').classList.remove('hidden');
     document.getElementById('connection-status').innerText = "Initializing Network...";
@@ -1025,6 +1025,7 @@ function initHost() {
             netState.clients = netState.clients.filter(c => c.conn !== conn);
             updateLobbyList();
             broadcastLobbyUpdate();
+            markPlayerDisconnected(conn.peer);
         });
     });
 }
@@ -1037,7 +1038,7 @@ function joinGame() {
     isNetworkGame = true;
     netState.isHost = false;
 
-    document.getElementById('online-controls').classList.add('hidden');
+    document.getElementById('online-actions').classList.add('hidden');
     document.getElementById('lobby-status').classList.remove('hidden');
     document.getElementById('connection-status').innerText = "Connecting to Host...";
 
@@ -1378,4 +1379,39 @@ function sendInteractionRequest(player, type, args) {
             resolve(null); // Fallback
         }
     });
+}
+
+// --- ERROR HANDLING & STABILITY ---
+
+window.onbeforeunload = function() {
+    if (isNetworkGame) {
+        return "Are you sure you want to leave the game?";
+    }
+};
+
+// Auto-Skip Dead/Disconnected Players
+// We need to modify nextTurn to be smarter about network disconnects.
+// But we don't have a reliable 'disconnected' flag in Player object yet, except via 'close' event.
+
+// Let's hook into the existing 'close' event in initHost
+// It updates netState.clients.
+// We should also mark the player as dead or skipped in gameState.
+
+function markPlayerDisconnected(peerId) {
+    if (!netState.isHost) return;
+
+    const p = gameState.players.find(pl => pl.peerId === peerId);
+    if (p) {
+        log(`${p.name} disconnected.`, 'important');
+        p.alive = false; // Kill them to skip turns
+        p.cards.forEach(c => c.dead = true); // Mark cards dead
+
+        broadcastState(); // Tell everyone
+        updateUI();
+
+        // If it was their turn, move on
+        if (getCurrentPlayer().id === p.id) {
+            nextTurn();
+        }
+    }
 }
