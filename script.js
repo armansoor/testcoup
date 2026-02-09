@@ -1184,14 +1184,30 @@ function joinGame() {
     document.getElementById('online-actions').classList.add('hidden');
     document.getElementById('lobby-status').classList.remove('hidden');
     document.getElementById('connection-status').innerText = "Connecting to Host...";
+    document.getElementById('connected-players-list').innerHTML = ''; // Clear stale list
 
     netState.peer = new Peer();
+
+    netState.peer.on('error', (err) => {
+        console.error("PeerJS Error:", err);
+        alert("Network Error: " + err.type);
+        location.reload();
+    });
 
     netState.peer.on('open', (id) => {
         const conn = netState.peer.connect(hostId);
         netState.hostConn = conn;
 
+        // Connection Timeout Safety
+        const timeout = setTimeout(() => {
+            if (!conn.open) {
+                alert("Connection timed out. Host not found or network blocking P2P.");
+                location.reload();
+            }
+        }, 10000);
+
         conn.on('open', () => {
+            clearTimeout(timeout);
             document.getElementById('connection-status').innerText = "Connected! Waiting for Host...";
             conn.send({ type: 'JOIN', name: name });
         });
@@ -1204,6 +1220,7 @@ function joinGame() {
         });
 
         conn.on('error', (err) => {
+            clearTimeout(timeout);
             console.error(err);
             alert("Connection Error: " + err);
             location.reload();
