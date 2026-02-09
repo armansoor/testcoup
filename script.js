@@ -786,6 +786,16 @@ function nextTurn() {
         const winner = alive[0];
         log(`${winner.name} WINS THE GAME!`, 'important');
 
+        if (isNetworkGame && netState.isHost) {
+            broadcastState(); // Final state
+            // Broadcast Game Over explicitly
+            broadcast({
+                type: 'GAME_OVER',
+                winnerName: winner.name,
+                isAI: winner.isAI
+            });
+        }
+
         document.getElementById('winner-name').innerText = `${winner.name} WINS!`;
         document.getElementById('game-end-message').innerText = `${winner.isAI ? 'The Bot' : 'The Player'} has won.`;
         document.getElementById('game-over-modal').classList.remove('hidden');
@@ -1143,8 +1153,18 @@ function handleNetworkData(data, conn) {
             case 'INTERACTION_REQUEST':
                 handleInteractionRequest(data);
                 break;
+            case 'GAME_OVER':
+                handleGameOver(data);
+                break;
         }
     }
+}
+
+function handleGameOver(data) {
+    // Ensure log is up to date (usually State Update comes before this, but safe to assume log is sync)
+    document.getElementById('winner-name').innerText = `${data.winnerName} WINS!`;
+    document.getElementById('game-end-message').innerText = `${data.isAI ? 'The Bot' : 'The Player'} has won.`;
+    document.getElementById('game-over-modal').classList.remove('hidden');
 }
 
 // --- LOBBY HELPERS ---
@@ -1214,6 +1234,14 @@ function broadcast(msg) {
 function startNetworkGame() {
     if (!netState.isHost) return;
 
+    const aiCount = parseInt(document.getElementById('network-ai-count').value);
+
+    // Check Minimum Players (Host + at least 1 other)
+    if (netState.clients.length + aiCount < 1) {
+        alert("You need at least 1 other player (Human or AI) to start!");
+        return;
+    }
+
     // 1. Setup Players
     gameState.players = [];
     gameState.deck = [];
@@ -1241,7 +1269,7 @@ function startNetworkGame() {
     });
 
     // AI
-    const aiCount = parseInt(document.getElementById('network-ai-count').value);
+    // aiCount is already defined above
     const difficulty = document.getElementById('network-difficulty').value;
     const startId = gameState.players.length + 1;
     for(let i=0; i<aiCount; i++) {
