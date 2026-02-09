@@ -270,6 +270,7 @@ function startGame() {
     document.getElementById('lobby-screen').classList.remove('active');
     document.getElementById('game-screen').classList.add('active');
     
+    setControls(false); // Initialize UI state
     updateUI();
     playTurn();
 }
@@ -783,12 +784,18 @@ function updateUI() {
     
     // Header
     document.getElementById('turn-indicator').innerText = `Turn: ${p.name}`;
+
+    // Determine Viewpoint Player (for Single Player vs Pass & Play)
+    const humans = gameState.players.filter(pl => !pl.isAI);
+    const isSinglePlayer = humans.length === 1;
+    let viewPlayer = p;
+    if (isSinglePlayer) viewPlayer = humans[0];
     
     // Opponents
     const oppContainer = document.getElementById('opponents-container');
     oppContainer.innerHTML = '';
     gameState.players.forEach(pl => {
-        if (pl.id === p.id && !gameState.players.every(x => x.isAI)) return; // Don't show self in opponents area if human playing
+        if (pl.id === viewPlayer.id) return; // Don't show self (viewpoint)
         
         const div = document.createElement('div');
         div.className = `opponent-card ${pl.id === p.id ? 'active-turn' : ''}`;
@@ -808,28 +815,35 @@ function updateUI() {
         oppContainer.appendChild(div);
     });
 
-    // Player Area (Only if Human is active or Pass & Play)
+    // Player Area
     const playerArea = document.getElementById('player-area');
-    if (!p.isAI) {
+
+    if (viewPlayer.isAI) {
+        // Spectator Mode
+         document.getElementById('active-player-name').innerText = `${p.name} (AI) is thinking...`;
+    } else {
         playerArea.classList.remove('hidden');
-        document.getElementById('active-player-name').innerText = p.name;
-        document.getElementById('player-coins').innerText = p.coins;
+        document.getElementById('active-player-name').innerText = viewPlayer.name;
+        document.getElementById('player-coins').innerText = viewPlayer.coins;
         
         const cardBox = document.getElementById('player-cards');
         cardBox.innerHTML = '';
-        p.cards.forEach((c, idx) => {
+        viewPlayer.cards.forEach((c, idx) => {
             const cDiv = document.createElement('div');
             cDiv.className = `player-card ${c.dead ? 'dead' : ''}`;
             cDiv.innerText = c.role;
             cardBox.appendChild(cDiv);
         });
-    } else {
-        // If watching bots
-         document.getElementById('active-player-name').innerText = `${p.name} (AI) is thinking...`;
     }
 }
 
 function setControls(active) {
-    const btns = document.querySelectorAll('#action-panel button');
-    btns.forEach(b => b.disabled = !active);
+    const panel = document.getElementById('action-panel');
+    if (active) {
+        panel.classList.remove('hidden');
+        const btns = panel.querySelectorAll('button');
+        btns.forEach(b => b.disabled = false);
+    } else {
+        panel.classList.add('hidden');
     }
+}
