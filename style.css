@@ -75,3 +75,24 @@ button.red { background: #800; }
     transform: translateY(-10px);
     box-shadow: 0 0 15px gold;
 }
+
+/* ADDED: Mode Selector Styles */
+.mode-selector {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.mode-btn {
+    flex: 1;
+    background: #333;
+    border: 1px solid #555;
+    opacity: 0.6;
+}
+
+.mode-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    opacity: 1;
+    font-weight: bold;
+}
