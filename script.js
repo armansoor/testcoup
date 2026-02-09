@@ -571,6 +571,54 @@ async function processReactions() {
     await resolveActionEffect();
 }
 
+function showHistory() {
+    // Force switch to history screen from ANY state (Lobby or Game)
+    document.getElementById('lobby-screen').classList.remove('active');
+    document.getElementById('game-screen').classList.remove('active'); // Key fix
+    document.getElementById('history-screen').classList.add('active');
+
+    const list = document.getElementById('history-list');
+    list.innerHTML = '';
+
+    let history = [];
+    try {
+        const stored = localStorage.getItem('coup_match_history');
+        if (stored) history = JSON.parse(stored);
+    } catch(e) {}
+
+    if (history.length === 0) {
+        list.innerHTML = '<p>No history found.</p>';
+        return;
+    }
+
+    history.forEach((entry, idx) => {
+        const div = document.createElement('div');
+        div.style.background = '#333';
+        div.style.padding = '10px';
+        div.style.marginBottom = '10px';
+        div.style.borderRadius = '5px';
+        div.style.border = '1px solid #444';
+
+        const date = new Date(entry.date).toLocaleString();
+        div.innerHTML = `
+            <div style="font-weight:bold; color:#4caf50;">Winner: ${entry.winner}</div>
+            <div style="font-size:0.8rem; color:#aaa;">${date}</div>
+            <div style="font-size:0.8rem;">Players: ${entry.players.join(', ')}</div>
+            <button class="small-btn" onclick="loadReplay(${idx})" style="margin-top:5px; background:#2196F3; width: auto;">Watch Replay</button>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function closeHistory() {
+    document.getElementById('history-screen').classList.remove('active');
+    // Determine where to go back to.
+    // If game is in progress or just finished (players array not empty), go to game screen?
+    // Or just default to Lobby?
+    // Safe default: Lobby.
+    document.getElementById('lobby-screen').classList.add('active');
+}
+
 async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
     // Reveal logic
     const hasCard = claimedPlayer.cards.some(c => c.role === claimedRole && !c.dead);
@@ -1580,29 +1628,33 @@ function syncClientState(remoteState) {
     updateUI();
 
     // CAPTURE REPLAY (CLIENT)
-    if (!isReplayMode) {
-        if (!gameState.replayData) gameState.replayData = [];
-        // We want the current gameState as seen by client
-        // Note: serializeState() creates a snapshot.
-        // Client sees what it sees (hidden cards for others). Replay will reflect that.
-        const snap = serializeState();
-        snap.timestamp = Date.now();
-        gameState.replayData.push(snap);
+    if (!isReplayMode && isNetworkGame && !netState.isHost) {
+        captureReplaySnapshot();
     }
 }
 
 function broadcastState() {
     // CAPTURE REPLAY (HOST / LOCAL)
     // We capture every broadcast state, which corresponds to every significant UI update.
+    if (!isReplayMode) {
+        captureReplaySnapshot();
+    }
+
+    if (isNetworkGame && netState.isHost) {
+        const s = serializeState();
+        broadcast({ type: 'STATE_UPDATE', state: s });
+    }
+}
+
+function captureReplaySnapshot() {
+    if (!gameState.replayData) gameState.replayData = [];
+
+    // Create a deep copy snapshot
     const s = serializeState();
     s.timestamp = Date.now();
 
-    if (!gameState.replayData) gameState.replayData = [];
+    // Avoid duplicates if nothing changed (optional optimization, but strict capture is safer)
     gameState.replayData.push(s);
-
-    if (isNetworkGame && netState.isHost) {
-        broadcast({ type: 'STATE_UPDATE', state: s });
-    }
 }
 
 
