@@ -65,6 +65,11 @@
             <!-- ONLINE PLAY CONTROLS -->
             <div id="online-controls" class="hidden">
                 <div id="online-actions" class="control-group" style="text-align:center;">
+                    <div class="control-group" style="text-align: left; margin-bottom: 15px;">
+                        <label>Your Name (min 3 chars):</label>
+                        <input type="text" id="my-player-name" placeholder="Enter Name" maxlength="12" style="width: 100%; box-sizing: border-box; text-align: center; padding: 10px; margin-top: 5px;">
+                    </div>
+
                     <button class="secondary" onclick="initHost()">Create Game (Host)</button>
                     <div style="margin: 10px 0;">- OR -</div>
                     <input type="text" id="host-id-input" placeholder="Paste Room Code Here" style="width: 100%; box-sizing: border-box; text-align: center; margin-bottom: 10px;">
@@ -78,7 +83,7 @@
 
                         <div class="control-group" style="margin-top: 15px;">
                             <label>AI Bots to Add:</label>
-                            <select id="network-ai-count">
+                            <select id="network-ai-count" onchange="updateLobbyList()">
                                 <option value="0" selected>0</option>
                                 <option value="1">1</option>
                                 <option value="2">2</option>
