@@ -96,3 +96,47 @@ button.red { background: #800; }
     opacity: 1;
     font-weight: bold;
 }
+
+/* --- NETWORK MODE ADJUSTMENTS FOR MOBILE --- */
+@media (max-width: 600px) {
+    #lobby-screen h1 { font-size: 2.5rem; margin-top: 10px; }
+    .mode-selector { flex-direction: row; gap: 5px; margin-bottom: 15px; }
+    .mode-btn { padding: 10px 5px; font-size: 0.9rem; }
+
+    #online-controls input {
+        font-size: 1.1rem; /* Better for mobile keyboard */
+        padding: 12px;
+    }
+
+    #my-room-code {
+        font-size: 1.0rem;
+        word-break: break-all;
+        padding: 8px;
+    }
+
+    /* Make opponent cards smaller to fit multiple on phone */
+    .opponent-card {
+        min-width: 80px;
+        padding: 5px;
+        margin: 2px;
+        font-size: 0.8rem;
+    }
+    .card-back { width: 20px; height: 28px; }
+
+    /* Action Grid - 2 columns for touch targets */
+    .action-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    button {
+        padding: 12px 5px; /* Taller tap target */
+        font-size: 0.9rem;
+    }
+
+    /* Modal - Ensure full screen on small devices */
+    .modal-content {
+        width: 95%;
+        max-height: 95vh;
+        padding: 15px;
+    }
+}
