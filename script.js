@@ -540,6 +540,7 @@ async function processReactions() {
                         } else {
                             // Block succeeded
                             log(`Action BLOCKED.`);
+                            broadcastState();
                             nextTurn();
                         }
                         return;
@@ -547,6 +548,7 @@ async function processReactions() {
                 }
 
                 log(`Action BLOCKED.`);
+                broadcastState();
                 nextTurn();
                 return;
             }
@@ -1001,8 +1003,12 @@ let netState = {
 // --- HOST LOGIC ---
 function initHost() {
     const name = document.getElementById('my-player-name').value.trim();
-    if (name.length < 3) {
-        alert("Name must be at least 3 characters!");
+    if (name.length < 3 || name.length > 20) {
+        alert("Name must be between 3 and 20 characters!");
+        return;
+    }
+    if (name.includes(' ')) {
+        alert("Name cannot contain spaces!");
         return;
     }
 
@@ -1040,8 +1046,12 @@ function initHost() {
 // --- CLIENT LOGIC ---
 function joinGame() {
     const name = document.getElementById('my-player-name').value.trim();
-    if (name.length < 3) {
-        alert("Name must be at least 3 characters!");
+    if (name.length < 3 || name.length > 20) {
+        alert("Name must be between 3 and 20 characters!");
+        return;
+    }
+    if (name.includes(' ')) {
+        alert("Name cannot contain spaces!");
         return;
     }
     const hostId = document.getElementById('host-id-input').value.trim();

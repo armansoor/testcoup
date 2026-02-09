@@ -154,3 +154,29 @@ button.red { background: #800; }
     border-color: var(--highlight);
     outline: none;
 }
+
+/* --- LARGE SCREEN FIXES --- */
+/* Ensure controls don't stretch too wide */
+@media (min-width: 1200px) {
+    .setup-box {
+        max-width: 500px; /* Slightly wider but constrained */
+    }
+
+    /* Ensure action buttons don't become massive */
+    .action-grid {
+        max-width: 600px;
+        margin: 0 auto; /* Center */
+    }
+
+    /* Center the lobby content properly */
+    #online-controls {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .control-group {
+        width: 100%;
+        max-width: 400px; /* Constrain inputs */
+    }
+}
