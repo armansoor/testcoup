@@ -8,27 +8,22 @@ A web-based implementation of the popular board game **Coup**, built with vanill
 
 In **Coup**, you are the head of a family in an Italian city-state run by a weak and corrupt court. You need to manipulate, bluff, and bribe your way to power. Your object is to destroy the influence of all other families, forcing them into exile. Only one family will survive.
 
-This implementation features:
+### Key Features
 -   **Single Player**: Play against up to 5 AI bots.
 -   **Multiplayer**: "Pass & Play" support for up to 6 human players.
--   **Spectator Mode**: Watch AI vs AI battles.
+-   **Spectator Mode**: Watch AI vs AI battles unfold.
 -   **Responsive Design**: Playable on desktop and mobile devices.
-
-## ✨ Features
-
--   **5 Character Roles**: Duke, Assassin, Captain, Ambassador, Contessa.
--   **7 Actions**: Income, Foreign Aid, Coup, Tax, Assassinate, Steal, Exchange.
--   **Game Log**: Tracks all actions and events during the game.
--   **Downloadable Logs**: Save the game history as a text file after the match ends.
+-   **Real-time Log**: Tracks every action, challenge, and block as it happens.
+-   **Game History**: Download the full game log as a text file after the match ends.
 
 ## 🤖 AI Opponents
 
-The game features advanced AI logic with four distinct difficulty levels:
+The game features advanced AI logic with four distinct difficulty levels to challenge players of all skills:
 
--   **Easy (Random)**: Makes random moves. Unpredictable but generally weak.
--   **Normal (Balanced)**: Follows basic strategy. Takes Income/Tax when safe, Coups when rich.
--   **Hard (Ruthless)**: Bluffs frequently, blocks aggressively, and tracks known cards to make informed Challenges.
--   **Hardcore (God Mode)**: Almost omniscient. Tracks every revealed card in the game (the "dead pile") to mathematically disprove impossible claims. Highly aggressive and calculated.
+-   **Easy (Random)**: Makes random moves. Unpredictable but generally weak. Good for learning the mechanics.
+-   **Normal (Balanced)**: Follows basic strategy. Takes Income/Tax when safe, Coups when rich, and blocks occasionally.
+-   **Hard (Ruthless)**: Bluffs frequently, blocks aggressively, and tracks known cards to make informed Challenges. Will punish obvious bluffs.
+-   **Hardcore (God Mode)**: Almost omniscient. Tracks every revealed card in the game (the "dead pile") to mathematically disprove impossible claims. Highly aggressive and calculated. Be prepared to lose!
 
 ## 🚀 How to Play
 
@@ -37,9 +32,16 @@ The game features advanced AI logic with four distinct difficulty levels:
 2.  Select the number of **Human Players**.
     -   *Select 0 to spectate a bot-only game.*
     -   *Select 2-6 for local "Pass & Play" multiplayer.*
-3.  Select the number of **AI Players**.
+3.  Select the number of **AI Players** (bots).
 4.  Choose the **AI Difficulty**.
 5.  Click **START GAME**.
+
+### Multiplayer (Pass & Play)
+When playing with multiple human players on the same device:
+1.  The game will display whose turn it is (e.g., "Turn: Player 1").
+2.  The active player should take the device and ensure only they can see the screen.
+3.  After making their move and resolving any actions, they should pass the device to the next player.
+4.  Be careful not to reveal your cards to opponents!
 
 ### Rules Summary
 -   Each player starts with **2 coins** and **2 influence cards** (face down).
@@ -61,6 +63,13 @@ The game features advanced AI logic with four distinct difficulty levels:
 | **Assassinate** | Pay 3 coins to eliminate an influence | 3 | Assassin | Contessa |
 | **Steal** | Take 2 coins from another player | - | Captain | Captain / Ambassador |
 | **Exchange** | Draw 2 cards, return 2 to deck | - | Ambassador | - |
+
+## 💡 Tips & Strategy
+
+-   **Don't Bluff the Hardcore AI**: If the Hardcore AI challenges you, it's usually because it *knows* you're lying based on the visible cards.
+-   **Use the Log**: The game log on the left (or top on mobile) is crucial for tracking who claimed what role earlier in the game.
+-   **Coup Early**: If you have 7+ coins, consider launching a Coup to remove a threat without risk of being blocked.
+-   **Watch for Patterns**: AI bots (especially on Normal/Hard) tend to follow logical patterns. Exploit their predictability!
 
 ## 🛠️ Tech Stack
 
