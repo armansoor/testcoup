@@ -620,11 +620,18 @@ async function resolveActionEffect() {
             log(`${p.name} exchanges cards...`);
 
             if(p.isAI) {
-                // Simplicity: AI keeps random
-                shuffle(p.cards);
-                while(p.cards.length > 2) {
-                    gameState.deck.push(p.cards.pop());
-                }
+                // Simplicity: AI keeps random, but only ALIVE cards
+                const alive = p.cards.filter(c => !c.dead);
+                const dead = p.cards.filter(c => c.dead);
+
+                shuffle(alive);
+
+                // Return 2 cards to deck (we drew 2)
+                gameState.deck.push(alive.pop());
+                gameState.deck.push(alive.pop());
+                shuffle(gameState.deck);
+
+                p.cards = [...alive, ...dead];
             } else {
                 await askHumanExchange(p);
             }
@@ -810,7 +817,30 @@ function updateUI() {
 
     // Player Area (Only if Human is active or Pass & Play)
     const playerArea = document.getElementById('player-area');
-    if (!p.isAI) {
+    const humans = gameState.players.filter(pl => !pl.isAI);
+
+    // Case 1: Single Player (Always show Human Hand)
+    if (humans.length === 1) {
+        const human = humans[0];
+        playerArea.classList.remove('hidden');
+
+        let statusText = human.name;
+        if (p.isAI) statusText += " (Opponent's Turn)";
+
+        document.getElementById('active-player-name').innerText = statusText;
+        document.getElementById('player-coins').innerText = human.coins;
+
+        const cardBox = document.getElementById('player-cards');
+        cardBox.innerHTML = '';
+        human.cards.forEach((c, idx) => {
+            const cDiv = document.createElement('div');
+            cDiv.className = `player-card ${c.dead ? 'dead' : ''}`;
+            cDiv.innerText = c.role;
+            cardBox.appendChild(cDiv);
+        });
+    }
+    // Case 2: Pass & Play (Show Active Human)
+    else if (!p.isAI) {
         playerArea.classList.remove('hidden');
         document.getElementById('active-player-name').innerText = p.name;
         document.getElementById('player-coins').innerText = p.coins;
@@ -826,6 +856,7 @@ function updateUI() {
     } else {
         // If watching bots
          document.getElementById('active-player-name').innerText = `${p.name} (AI) is thinking...`;
+         document.getElementById('player-cards').innerHTML = '';
     }
 }
 
