@@ -32,15 +32,18 @@ class Player {
         this.memory = {};
     }
 
-    loseCard(cardIndex) {
+    async loseCard(cardIndex) {
         if (this.cards[cardIndex].dead) return;
         this.cards[cardIndex].dead = true;
         log(`${this.name} lost a ${this.cards[cardIndex].role}!`);
+        updateUI();
+        await sleep(1500);
+
         if (this.cards.every(c => c.dead)) {
             this.alive = false;
             log(`${this.name} is ELIMINATED!`, 'important');
+            updateUI();
         }
-        updateUI();
     }
 
     hasRole(role) {
@@ -510,6 +513,7 @@ async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
     
     if (hasCard) {
         log(`Challenge FAILED! ${claimedPlayer.name} HAS the ${claimedRole}!`, 'important');
+        await sleep(1500);
         // Challenger loses card
         await loseInfluence(challenger);
         
@@ -522,6 +526,7 @@ async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
         return true; // Challenge lost (Blocker won)
     } else {
         log(`${claimedPlayer.name} was BLUFFING! Action fails.`, 'important');
+        await sleep(1500);
         await loseInfluence(claimedPlayer);
         return false; // Challenge won (Blocker lost)
     }
@@ -538,10 +543,10 @@ async function loseInfluence(player) {
         const toKill = aliveCards[Math.floor(Math.random() * aliveCards.length)];
         // Find actual index
         const idx = player.cards.indexOf(toKill);
-        player.loseCard(idx);
+        await player.loseCard(idx);
     } else {
         const idx = await askHumanToLoseCard(player);
-        player.loseCard(idx);
+        await player.loseCard(idx);
     }
 
     if (!player.alive) {
@@ -601,11 +606,13 @@ async function resolveActionEffect() {
         case 'Assassinate':
             if (!t) { log('Action failed: No target.'); break; }
             log(`${t.name} was Assassinated!`);
+            await sleep(1500);
             await loseInfluence(t);
             break;
         case 'Coup':
             if (!t) { log('Action failed: No target.'); break; }
             log(`${t.name} suffered a Coup!`);
+            await sleep(1500);
             await loseInfluence(t);
             break;
         case 'Exchange':
