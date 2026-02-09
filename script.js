@@ -266,6 +266,9 @@ function startGame() {
     gameState.log = [];
     gameState.replayData = [];
 
+    // Safety: Reset connection handlers for in-game
+    // (Optional: remove lobby-specific listeners if needed)
+
     // Create Deck (3 of each)
     ROLES.forEach(role => {
         for(let i=0; i<3; i++) gameState.deck.push({ role: role, dead: false });
@@ -1123,8 +1126,11 @@ const PEER_CONFIG = {
     config: {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' }
-        ]
+            { urls: 'stun:global.stun.twilio.com:3478' },
+            { urls: 'stun:stun.stunprotocol.org:3478' },
+            { urls: 'stun:stun.services.mozilla.com' }
+        ],
+        iceCandidatePoolSize: 10,
     },
     debug: 1
 };
@@ -1226,16 +1232,28 @@ function joinGame() {
     });
 
     netState.peer.on('open', (id) => {
-        const conn = netState.peer.connect(hostId);
+        // Prevent self-connection
+        if (id === hostId) {
+            alert("You cannot join yourself! Share the code with another device.");
+            location.reload();
+            return;
+        }
+
+        document.getElementById('connection-status').innerText = "Looking for Host...";
+
+        const conn = netState.peer.connect(hostId, {
+            reliable: true // Improve reliability for data channel
+        });
         netState.hostConn = conn;
 
-        // Connection Timeout Safety
+        // Connection Timeout Safety (Extended for mobile networks)
         const timeout = setTimeout(() => {
             if (!conn.open) {
-                alert("Connection timed out. Host not found or network blocking P2P.");
-                location.reload();
+                document.getElementById('connection-status').innerText = "Connection Failed: Timeout";
+                alert("Connection timed out. Ensure Host is online and check firewalls.");
+                // Do not auto-reload immediately so user can read error
             }
-        }, 10000);
+        }, 15000);
 
         conn.on('open', () => {
             clearTimeout(timeout);
@@ -1252,9 +1270,8 @@ function joinGame() {
 
         conn.on('error', (err) => {
             clearTimeout(timeout);
-            console.error(err);
-            alert("Connection Error: " + err);
-            location.reload();
+            console.error("Connection Error:", err);
+            document.getElementById('connection-status').innerText = "Error: " + err;
         });
     });
 }
