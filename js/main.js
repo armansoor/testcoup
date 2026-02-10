@@ -14,6 +14,11 @@ if ('serviceWorker' in navigator) {
     });
 }
 
+// Global Click listener for Audio Resume
+document.body.addEventListener('click', () => {
+    if (window.audio) window.audio.resume();
+}, { once: true });
+
 // --- ERROR HANDLING & STABILITY ---
 
 window.onbeforeunload = function() {
