@@ -1,0 +1,21 @@
+{
+  "name": "Coup: The Resistance",
+  "short_name": "Coup",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "description": "Deception, Deduction, Domination. Play Coup offline or online.",
+  "icons": [
+    {
+      "src": "https://armansoor.github.io/testcoup/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://armansoor.github.io/testcoup/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
