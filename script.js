@@ -1167,7 +1167,23 @@ function initHost() {
 
     netState.peer.on('error', (err) => {
         console.error("PeerJS Error:", err);
-        alert("Network Error: " + err.type);
+        const statusEl = document.getElementById('connection-status');
+        if (statusEl) {
+            let msg = `Error: ${err.type}`;
+            if (err.type === 'peer-unavailable') msg += " (Host ID not found or offline)";
+            if (err.type === 'network') msg += " (Check your internet connection)";
+            if (err.type === 'browser-incompatible') msg += " (Browser not supported)";
+            if (err.type === 'disconnected') msg += " (Lost connection to signaling server)";
+            if (err.type === 'invalid-id') msg += " (Invalid ID format)";
+            if (err.type === 'socket-error') msg += " (Socket connection failed)";
+            if (err.type === 'socket-closed') msg += " (Socket closed unexpectedly)";
+            if (err.type === 'unavailable-id') msg += " (ID already taken)";
+            if (err.type === 'webrtc') msg += " (WebRTC Native Error)";
+
+            statusEl.innerText = msg;
+            statusEl.style.color = 'red';
+        }
+        alert("Network Error: " + err.type + "\n" + (err.message || ""));
     });
 
     netState.peer.on('open', (id) => {
@@ -1227,8 +1243,19 @@ function joinGame() {
 
     netState.peer.on('error', (err) => {
         console.error("PeerJS Error:", err);
-        alert("Network Error: " + err.type);
-        location.reload();
+        const statusEl = document.getElementById('connection-status');
+        if (statusEl) {
+            let msg = `Error: ${err.type}`;
+            if (err.type === 'peer-unavailable') msg += " (Host ID not found or offline)";
+            if (err.type === 'network') msg += " (Check your internet connection)";
+            if (err.type === 'browser-incompatible') msg += " (Browser not supported)";
+            if (err.type === 'disconnected') msg += " (Lost connection to signaling server)";
+
+            statusEl.innerText = msg;
+            statusEl.style.color = 'red';
+        }
+        alert("Network Error: " + err.type + "\n" + (err.message || ""));
+        // location.reload(); // Don't reload immediately so user can read error
     });
 
     netState.peer.on('open', (id) => {
