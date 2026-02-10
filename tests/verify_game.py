@@ -20,6 +20,13 @@ def test_game():
         print(f"Manifest found: {manifest}")
         assert manifest == "manifest.json"
 
+        # PWA Install Button Check
+        # It should exist in DOM but be hidden by default
+        install_btn = page.query_selector("#install-pwa-btn")
+        assert install_btn is not None
+        is_visible = page.is_visible("#install-pwa-btn")
+        print(f"Install Button found (Hidden: {not is_visible})")
+
         page.select_option("#human-count", "1")
         page.select_option("#ai-count", "1")
         page.click("button:has-text('START GAME')")
@@ -82,11 +89,7 @@ def test_game():
         if any("Internet connection required" in m for m in msg):
             print("Offline Check: Host blocked correctly.")
         else:
-            print("Offline Check: Warning! Did not see offline alert.")
-            # Note: might fail if Playwright offline mode doesn't affect navigator.onLine inside file:// context correctly
-            # Let's check navigator.onLine
-            is_online = page_off.evaluate("navigator.onLine")
-            print(f"Navigator.onLine is: {is_online}")
+             print("Offline Check: Warning! Did not see offline alert.")
 
         context_offline.close()
 
