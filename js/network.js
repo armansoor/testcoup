@@ -24,6 +24,11 @@ let netState = {
 
 // --- HOST LOGIC ---
 function initHost() {
+    if (!navigator.onLine) {
+        alert("Internet connection required for Online Multiplayer.");
+        return;
+    }
+
     const name = document.getElementById('my-player-name').value.trim();
     if (name.length < 3 || name.length > 20) {
         alert("Name must be between 3 and 20 characters!");
@@ -98,6 +103,11 @@ function copyRoomCode() {
 
 // --- CLIENT LOGIC ---
 function joinGame() {
+    if (!navigator.onLine) {
+        alert("Internet connection required for Online Multiplayer.");
+        return;
+    }
+
     const name = document.getElementById('my-player-name').value.trim();
     if (name.length < 3 || name.length > 20) {
         alert("Name must be between 3 and 20 characters!");
