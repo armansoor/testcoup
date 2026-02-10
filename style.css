@@ -158,27 +158,41 @@ button.disabled-force { opacity: 0.3; pointer-events: none; }
 }
 
 /* --- LARGE SCREEN FIXES --- */
-/* Ensure controls don't stretch too wide */
-@media (min-width: 1200px) {
-    .setup-box {
-        max-width: 500px; /* Slightly wider but constrained */
+/* Tablet & Desktop: Constrain grid to prevent overflow */
+@media (min-width: 768px) {
+    #action-panel {
+        max-width: 800px;
+        margin: 0 auto; /* Center the panel */
+        overflow: hidden; /* Safety clip */
     }
 
-    /* Ensure action buttons don't become massive */
     .action-grid {
-        max-width: 600px;
-        margin: 0 auto; /* Center */
+        display: flex;
+        flex-wrap: wrap; /* Allow wrapping if too many buttons */
+        justify-content: center;
+        gap: 10px;
+        max-width: 100%; /* Ensure it fits in parent */
     }
 
-    /* Center the lobby content properly */
+    .action-grid button {
+        flex: 1 1 120px; /* Flex grow, shrink, base width */
+        max-width: 200px; /* Don't get too wide */
+    }
+
+    .setup-box {
+        max-width: 500px;
+        margin: 0 auto;
+    }
+
     #online-controls {
         display: flex;
         flex-direction: column;
         align-items: center;
+        width: 100%;
     }
 
     .control-group {
         width: 100%;
-        max-width: 400px; /* Constrain inputs */
+        max-width: 400px;
     }
 }
