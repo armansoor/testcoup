@@ -6,6 +6,51 @@ function log(msg, type='') {
     const box = document.getElementById('game-log');
     box.appendChild(div);
     box.scrollTop = box.scrollHeight;
+
+    // Audio Cues based on message content
+    if (window.audio) {
+        if (type === 'important' || msg.includes('ELIMINATED')) window.audio.playLose();
+        else if (msg.includes('WINS')) window.audio.playWin();
+        else if (msg.includes('BLOCKS') || msg.includes('CHALLENGES')) window.audio.playError(); // Alert sound
+        else if (msg.includes('Income') || msg.includes('Foreign Aid') || msg.includes('Tax') || msg.includes('Steal')) {
+             // Subtle click for regular actions
+             window.audio.playClick();
+        }
+    }
+
+    // Visual Shake for negative events
+    if (msg.includes('BLOCKS') || msg.includes('CHALLENGES') || msg.includes('lost a')) {
+        triggerAnimation(document.body, 'anim-shake');
+    }
+    // Red Flash for elimination
+    if (msg.includes('ELIMINATED')) {
+        triggerAnimation(document.body, 'anim-flash');
+    }
+}
+
+function triggerAnimation(element, animClass) {
+    if (!element) return;
+    element.classList.remove(animClass);
+    void element.offsetWidth; // Trigger reflow
+    element.classList.add(animClass);
+}
+
+function spawnFloatingText(text, targetElement) {
+    if (!targetElement) return;
+    const rect = targetElement.getBoundingClientRect();
+
+    const span = document.createElement('span');
+    span.innerText = text;
+    span.className = 'floating-text';
+    span.style.left = `${rect.left + rect.width/2}px`;
+    span.style.top = `${rect.top}px`;
+
+    document.body.appendChild(span);
+
+    // Cleanup
+    setTimeout(() => {
+        if (span.parentNode) span.parentNode.removeChild(span);
+    }, 1000);
 }
 
 function toggleRules() {
@@ -85,6 +130,16 @@ function updateUI() {
         else statusText += " (Your Turn)";
 
         document.getElementById('active-player-name').innerText = statusText;
+
+        // Coin Animation Logic
+        const oldCoins = parseInt(document.getElementById('player-coins').innerText);
+        if (oldCoins < me.coins) {
+             if (window.audio) window.audio.playCoin();
+             // Spawn Floating Text
+             const diff = me.coins - oldCoins;
+             spawnFloatingText(`+${diff}`, document.querySelector('.coins-display'));
+        }
+
         document.getElementById('player-coins').innerText = me.coins;
 
         const cardBox = document.getElementById('player-cards');
