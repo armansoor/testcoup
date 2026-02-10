@@ -2,7 +2,7 @@
 
 A web-based implementation of the popular board game **Coup**, built with vanilla HTML, CSS, and JavaScript. Challenge your friends in "Pass & Play" mode, connect for an Online / LAN game, or face off against AI opponents with adjustable difficulty levels.
 
-[**Play the Live Demo**](https://armansoor.github.io/testcoup/)
+[**Play the Live Game**](https://armansoor.github.io/testcoup/)
 
 ## 🎮 Game Modes
 
