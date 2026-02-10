@@ -10,7 +10,6 @@
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="style_anim.css">
-    <link rel="stylesheet" href="style_chat.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
@@ -135,13 +134,6 @@
     </div>
 
     <div id="game-screen" class="screen">
-        <div id="chat-container" class="hidden">
-            <div id="chat-messages"></div>
-            <div id="chat-input-area">
-                <input type="text" id="chat-input" placeholder="Chat..." maxlength="50">
-                <button onclick="sendChat()" class="small-btn">Send</button>
-            </div>
-        </div>
         <div class="game-header">
             <div id="turn-indicator">Turn: Player 1</div>
             <button class="small-btn" onclick="if(window.audio) window.audio.toggleMute() ? this.innerText='Unmute' : this.innerText='Mute'">Mute</button>
@@ -224,7 +216,6 @@
     <script src="js/network.js"></script>
     <script src="js/game.js"></script>
     <script src="js/audio.js"></script>
-    <script src="js/chat.js"></script>
     <script src="js/main.js"></script>
 </body>
         </html>

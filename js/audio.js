@@ -50,7 +50,6 @@ class SoundManager {
         this.playTone(300, 'sawtooth', 0.2);
         setTimeout(() => this.playTone(200, 'sawtooth', 0.4), 200);
     }
-    playChat() { this.playTone(600, 'sine', 0.1); }
 }
 
 const audio = new SoundManager();

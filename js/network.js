@@ -228,17 +228,6 @@ function handleNetworkData(data, conn) {
                     delete netState.pendingRequests[data.reqId];
                 }
                 break;
-            case 'CHAT':
-                addChatMessage(data.sender, data.message);
-                // Host should re-broadcast chat to other clients if we had >2 players,
-                // but for simple peer mesh or host-auth, host just displays it.
-                // To support multi-client chat, Host needs to relay.
-                netState.clients.forEach(c => {
-                    if (c.id !== conn.peer && c.conn && c.conn.open) {
-                        c.conn.send(data);
-                    }
-                });
-                break;
         }
     } else {
         // CLIENT HANDLING
@@ -259,9 +248,6 @@ function handleNetworkData(data, conn) {
             case 'GAME_OVER':
                 handleGameOver(data);
                 break;
-            case 'CHAT':
-                addChatMessage(data.sender, data.message);
-                break;
         }
     }
 }
@@ -279,9 +265,6 @@ function handleGameOver(data) {
 function updateLobbyList() {
     const list = document.getElementById('connected-players-list');
     list.innerHTML = ''; // Clear
-
-    // Enable Chat UI in Lobby
-    document.getElementById('chat-container').classList.remove('hidden');
 
     // 1. Host (Self)
     if (netState.isHost) {
@@ -327,9 +310,6 @@ function broadcastLobbyUpdate() {
 }
 
 function updateClientLobby(names) {
-    // Enable Chat UI in Lobby
-    document.getElementById('chat-container').classList.remove('hidden');
-
     const list = document.getElementById('connected-players-list');
     list.innerHTML = '';
     names.forEach(n => {
@@ -347,9 +327,6 @@ function broadcast(msg) {
 
 function startNetworkGame() {
     if (!netState.isHost) return;
-
-    // Ensure Chat remains visible
-    document.getElementById('chat-container').classList.remove('hidden');
 
     const aiCount = parseInt(document.getElementById('network-ai-count').value);
 
@@ -423,9 +400,6 @@ function startNetworkGame() {
 function setupClientGame(initialState) {
     document.getElementById('lobby-screen').classList.remove('active');
     document.getElementById('game-screen').classList.add('active');
-
-    // Ensure Chat remains visible
-    document.getElementById('chat-container').classList.remove('hidden');
 
     gameState.replayData = [];
 

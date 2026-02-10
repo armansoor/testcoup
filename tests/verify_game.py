@@ -20,9 +20,10 @@ def test_game():
         assert mute_btn is not None
         print("Audio Mute button found")
 
-        # Chat Check (Hidden initially)
-        assert not page.is_visible("#chat-container")
-        print("Chat hidden initially")
+        # Chat Check (Ensure ABSENT)
+        chat_box = page.query_selector("#chat-container")
+        assert chat_box is None
+        print("Chat container absent (Correct)")
 
         page.select_option("#human-count", "1")
         page.select_option("#ai-count", "1")
@@ -35,16 +36,9 @@ def test_game():
         page.wait_for_selector(".log-entry:has-text('Income')")
         print("Action performed")
 
-        # Local Chat Test (Pass & Play Style)
-        # Even though hidden, we can force it visible via console for testing or enable it
-        # But wait, local chat isn't enabled by default in single player lobby logic?
-        # Actually, `updateLobbyList` enables it, but that's network only.
-        # Single Player doesn't call updateLobbyList.
-        # So Chat remains hidden. This is fine.
-
         context.close()
 
-        # Test 5: LAN / Multiplayer Connection Only (Skipping Chat Verification)
+        # Test 5: LAN / Multiplayer Connectivity Only
         print("Starting LAN/Multiplayer Connectivity Test...")
 
         context_host = browser.new_context()
