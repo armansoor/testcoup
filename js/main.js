@@ -4,13 +4,38 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         // Register SW with scope ./ to cover all files
         navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Service Worker registered!', reg))
+            .then(reg => {
+                console.log('Service Worker registered!', reg);
+                reg.onupdatefound = () => {
+                    const installingWorker = reg.installing;
+                    installingWorker.onstatechange = () => {
+                        if (installingWorker.state === 'installed') {
+                            if (navigator.serviceWorker.controller) {
+                                console.log('New content is available; please refresh.');
+                                // Optional: Show a toast to user "Update available, reload?"
+                                // For now, we rely on the next visit or manual reload,
+                                // but the SW skipWaiting() should handle it.
+                            } else {
+                                console.log('Content is cached for offline use.');
+                            }
+                        }
+                    };
+                };
+            })
             .catch(err => console.log('Service Worker registration failed:', err));
 
         // Setup Install Button
         if (typeof setupInstallButton === 'function') {
             setupInstallButton();
         }
+    });
+
+    // Refresh page if controller changes (new SW activated)
+    let refreshing;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        window.location.reload();
+        refreshing = true;
     });
 }
 
