@@ -25,38 +25,49 @@ def verify_replay():
         page.wait_for_selector(".log-entry:has-text('Income')")
         print("Move made.")
 
-        # Cheat to enable Replay (simulate game over logic or just call UI)
-        # We can just quit to lobby and see if History has entry? No, history only saves on win.
-        # Let's force a win for Player 1
+        # Win Game
         page.evaluate("gameState.players[1].alive = false; nextTurn();")
 
-        # Wait for Game Over Modal
+        # Wait for Game Over
         page.wait_for_selector("#game-over-modal:not(.hidden)", timeout=5000)
         print("Game Over reached.")
 
-        # Click "View Match History"
+        # View History
         page.click("button:has-text('View Match History')")
         page.wait_for_selector("#history-screen.active")
 
-        # Click "Watch Replay"
+        # Watch Replay
         page.click("button:has-text('Watch Replay')")
         page.wait_for_selector("#replay-controls:not(.hidden)")
         print("Entered Replay Mode.")
 
-        # Check Log Content (Initial state)
+        # Step 0 Check
+        # Should contain "Welcome to Coup" but NOT "WINS THE GAME" yet
         log_text = page.inner_text("#game-log")
         assert "Welcome to Coup" in log_text
+        if "WINS THE GAME" in log_text:
+            print(f"FAILURE: Log at Step 0 contains future events: {log_text}")
+            raise AssertionError("Log pollution detected!")
+        else:
+            print("Step 0 Log Clean.")
 
-        # Click Next
-        page.click("button:has-text('Next >')")
+        # Go to End
+        while True:
+            # Check if Next is enabled? Logic doesn't disable button, just stops index.
+            # We can check Step Counter text
+            step_text = page.inner_text("#replay-step")
+            current, total = map(int, step_text.split(' / '))
 
-        # Check Log Update
-        # The Income action should appear now (or be highlighted)
-        log_text_2 = page.inner_text("#game-log")
-        print(f"Log at step 1: {log_text_2}")
+            if current == total:
+                break
 
-        # Assuming the log replay logic works, we should see the Income entry
-        # Note: If snapshots captured it.
+            page.click("button:has-text('Next >')")
+            time.sleep(0.1)
+
+        # Last Step Check
+        log_text_end = page.inner_text("#game-log")
+        assert "WINS THE GAME" in log_text_end
+        print("Final Log contains Win message.")
 
         context.close()
         browser.close()
