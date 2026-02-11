@@ -404,8 +404,10 @@ function nextTurn() {
         // Check Achievements
         checkGameEndAchievements(winner);
 
+        // Capture Final State for Replay (Local & Network)
+        broadcastState();
+
         if (isNetworkGame && netState.isHost) {
-            broadcastState(); // Final state
             // Broadcast Game Over explicitly
             broadcast({
                 type: 'GAME_OVER',

@@ -426,7 +426,7 @@ function serializeState() {
         })),
         currentPlayerIndex: gameState.currentPlayerIndex,
         turnPhase: gameState.turnPhase,
-        log: gameState.log,
+        log: [...gameState.log], // Clone array to prevent reference issues in replay
         currentAction: null
     };
 
