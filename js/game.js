@@ -21,7 +21,7 @@ function startGame() {
 
     gameState.players = [];
     gameState.deck = [];
-    gameState.log = [];
+    gameState.log = ['Welcome to Coup.'];
     gameState.replayData = [];
 
     // Safety: Reset connection handlers for in-game
