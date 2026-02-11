@@ -10,6 +10,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="style_anim.css">
+    <link rel="stylesheet" href="style_pass.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
@@ -119,6 +120,7 @@
             </div>
 
             <button class="secondary" onclick="toggleRules()" style="margin-top: 10px;">HOW TO PLAY</button>
+            <button class="secondary" onclick="showStatsModal()" style="margin-top: 10px;">STATS & ACHIEVEMENTS</button>
             <button class="secondary" onclick="showHistory()" style="margin-top: 10px;">MATCH HISTORY</button>
 
             <button id="install-pwa-btn" class="secondary" style="margin-top: 10px; display: none; background: #FF9800; color: white;">INSTALL APP</button>
@@ -209,6 +211,14 @@
         </div>
     </div>
 
+    <!-- PASS & PLAY PRIVACY SCREEN -->
+    <div id="pass-device-screen" class="hidden">
+        <h1>Pass Device</h1>
+        <p>It is now <strong id="next-player-name" style="color: #4CAF50;">Player X</strong>'s turn.</p>
+        <p>Pass the device to them properly.</p>
+        <button id="i-am-ready-btn">I am Player X</button>
+    </div>
+
     <script src="js/constants.js"></script>
     <script src="js/state.js"></script>
     <script src="js/utils.js"></script>
@@ -216,6 +226,7 @@
     <script src="js/network.js"></script>
     <script src="js/game.js"></script>
     <script src="js/audio.js"></script>
+    <script src="js/stats.js"></script>
     <script src="js/main.js"></script>
 </body>
         </html>

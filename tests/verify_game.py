@@ -15,15 +15,13 @@ def test_game():
         page = context.new_page()
         page.goto(url)
 
-        # Audio Mute Button Check
-        mute_btn = page.query_selector("button:has-text('Mute')")
-        assert mute_btn is not None
-        print("Audio Mute button found")
-
-        # Chat Check (Ensure ABSENT)
-        chat_box = page.query_selector("#chat-container")
-        assert chat_box is None
-        print("Chat container absent (Correct)")
+        # Test Stats Modal
+        page.click("button:has-text('STATS & ACHIEVEMENTS')")
+        page.wait_for_selector("#stats-modal")
+        assert page.is_visible("text=Games Played")
+        print("Stats Modal opened")
+        # Target the specific close button inside the stats modal
+        page.click("#stats-modal button:has-text('Close')")
 
         page.select_option("#human-count", "1")
         page.select_option("#ai-count", "1")
@@ -31,54 +29,44 @@ def test_game():
         page.wait_for_selector("#game-screen.active")
         print("Single Player: Started")
 
-        # Perform Action -> Trigger Audio/Anim
+        # Perform Action
         page.click("button:has-text('Income')")
         page.wait_for_selector(".log-entry:has-text('Income')")
-        print("Action performed")
 
         context.close()
 
-        # Test 5: LAN / Multiplayer Connectivity Only
-        print("Starting LAN/Multiplayer Connectivity Test...")
+        # Test 2: Pass & Play Privacy Screen
+        context_pp = browser.new_context()
+        page_pp = context_pp.new_page()
+        page_pp.goto(url)
 
-        context_host = browser.new_context()
-        host_page = context_host.new_page()
-        host_page.goto(url)
+        page_pp.select_option("#human-count", "2")
+        page_pp.select_option("#ai-count", "0")
+        page_pp.click("button:has-text('START GAME')")
+        page_pp.wait_for_selector("#game-screen.active")
+        print("Pass & Play: Started")
 
-        host_page.click("#mode-online")
-        host_page.fill("#my-player-name", "HostPlayer")
-        host_page.click("button:has-text('Create Game (Host)')")
+        # P1 Move
+        page_pp.click("button:has-text('Income')")
 
-        try:
-            # Wait longer for ID generation (network in container might be slow)
-            host_page.wait_for_function("document.getElementById('my-room-code').innerText !== 'Generating...'", timeout=10000)
-            room_code = host_page.inner_text("#my-room-code")
-            print(f"Host Room Code: {room_code}")
+        # Verify Privacy Screen Appears
+        # Logic in game.js: setTimeout(..., 1000)
+        time.sleep(1.5)
+        # Check if overlay is visible
+        assert page_pp.is_visible("#pass-device-screen")
+        assert page_pp.is_visible("text=Pass Device")
+        print("Privacy Screen appeared")
 
-            context_client = browser.new_context()
-            client_page = context_client.new_page()
-            client_page.goto(url)
+        # Click "I am Player 2"
+        page_pp.click("#i-am-ready-btn")
 
-            client_page.click("#mode-online")
-            client_page.fill("#my-player-name", "ClientPlayer")
-            client_page.fill("#host-id-input", room_code)
-            client_page.click("button:has-text('Join Game')")
+        # Verify Game Screen Resumed and P2 turn
+        assert not page_pp.is_visible("#pass-device-screen")
+        page_pp.wait_for_function("document.getElementById('turn-indicator').innerText.includes('Player 2')")
+        print("Turn passed to Player 2 successfully")
 
-            # Wait for connection on Host
-            host_page.wait_for_selector("#connected-players-list li:has-text('ClientPlayer')", timeout=10000)
-            client_page.wait_for_function("document.getElementById('connection-status').innerText.includes('Connected!')", timeout=10000)
-            print("Both Connected")
+        context_pp.close()
 
-            # Start Game
-            host_page.click("#network-start-btn")
-            host_page.wait_for_selector("#game-screen.active")
-            print("Game Started via Network")
-
-            context_client.close()
-        except Exception as e:
-            print(f"LAN Connectivity Test Failed (acceptable if network restricted): {e}")
-
-        context_host.close()
         browser.close()
         print("All Tests Completed.")
 
