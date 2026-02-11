@@ -474,11 +474,21 @@ function syncClientState(remoteState) {
     // Refresh Logs
     const logBox = document.getElementById('game-log');
     logBox.innerHTML = '';
-    gameState.log.forEach(msg => {
+    gameState.log.forEach((msg, index) => {
         const div = document.createElement('div');
-        div.className = 'log-entry'; // Type lost in serialization?
-        // We didn't serialize type. Improvements for later.
+        // Simple type inference or default
+        div.className = 'log-entry';
+        if (msg.includes('WINS') || msg.includes('ELIMINATED')) div.className += ' important';
+        if (msg.includes('Welcome')) div.className += ' system';
+
         div.innerText = msg;
+
+        // Highlight last entry if replaying
+        if (isReplayMode && index === gameState.log.length - 1) {
+            div.style.backgroundColor = '#333';
+            div.style.borderLeft = '4px solid #4CAF50';
+        }
+
         logBox.appendChild(div);
     });
     logBox.scrollTop = logBox.scrollHeight;

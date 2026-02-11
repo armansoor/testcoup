@@ -158,6 +158,17 @@ button.disabled-force { opacity: 0.3; pointer-events: none; }
 }
 
 /* --- LARGE SCREEN FIXES --- */
+/* REPLAY CONTROLS MOBILE */
+@media (max-width: 600px) {
+    #replay-controls {
+        flex-wrap: wrap;
+    }
+    #replay-controls button {
+        padding: 8px 15px;
+        font-size: 0.8rem;
+    }
+}
+
 /* Tablet & Desktop: Constrain grid to prevent overflow */
 @media (min-width: 768px) {
     #action-panel {
