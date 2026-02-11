@@ -36,9 +36,20 @@ let playerStats = {
 };
 
 function loadStats() {
-    const s = localStorage.getItem('coup_stats');
-    if (s) {
-        playerStats = JSON.parse(s);
+    try {
+        const s = localStorage.getItem('coup_stats');
+        if (s) {
+            playerStats = JSON.parse(s);
+        }
+    } catch (e) {
+        console.error("Failed to load stats:", e);
+        playerStats = {
+            gamesPlayed: 0,
+            gamesWon: 0,
+            streak: 0,
+            achievements: [],
+            history: []
+        };
     }
 }
 
@@ -103,6 +114,7 @@ function showStatsModal() {
         modal = document.createElement('div');
         modal.id = 'stats-modal';
         modal.className = 'modal hidden';
+        modal.style.zIndex = '2000'; // Ensure it is on top of everything
         modal.innerHTML = `
             <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
                 <h2>Stats & Achievements</h2>
