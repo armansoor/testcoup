@@ -278,6 +278,7 @@ async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
         // Draw NEW card
         claimedPlayer.cards[cardIdx] = gameState.deck.pop();
 
+        updateUI(); // Ensure local UI reflects the swap immediately
         broadcastState();
 
         return true; // Challenge lost (Blocker won)
