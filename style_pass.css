@@ -1,0 +1,36 @@
+#pass-device-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #111;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: #eee;
+}
+
+#pass-device-screen h1 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    color: #FF9800;
+}
+
+#pass-device-screen p {
+    font-size: 1.2rem;
+    margin-bottom: 30px;
+}
+
+#pass-device-screen button {
+    padding: 15px 30px;
+    font-size: 1.5rem;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}

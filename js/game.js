@@ -401,6 +401,9 @@ function nextTurn() {
         const winner = alive[0];
         log(`${winner.name} WINS THE GAME!`, 'important');
 
+        // Check Achievements
+        checkGameEndAchievements(winner);
+
         if (isNetworkGame && netState.isHost) {
             broadcastState(); // Final state
             // Broadcast Game Over explicitly
@@ -423,7 +426,20 @@ function nextTurn() {
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
     } while (!gameState.players[gameState.currentPlayerIndex].alive);
 
-    setTimeout(playTurn, 1000);
+    // Pass & Play Privacy Check
+    const nextPlayer = getCurrentPlayer();
+    const humanPlayers = gameState.players.filter(p => !p.isAI);
+
+    // If it's a local multiplayer game (more than 1 human, no network)
+    // AND the next player is human
+    // AND the previous player was also human (or we just want to hide between turns regardless)
+    if (!isNetworkGame && humanPlayers.length > 1 && !nextPlayer.isAI) {
+        // Show Privacy Screen instead of playing directly
+        // We delay slightly to let animations finish
+        setTimeout(() => showPassDeviceScreen(nextPlayer), 1000);
+    } else {
+        setTimeout(playTurn, 1000);
+    }
 }
 
 // --- INTERACTION REQUEST HANDLER (Client) ---

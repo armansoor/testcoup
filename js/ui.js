@@ -57,6 +57,24 @@ function toggleRules() {
     document.getElementById('rules-modal').classList.toggle('hidden');
 }
 
+// --- PASS & PLAY SCREEN ---
+function showPassDeviceScreen(nextPlayer) {
+    const screen = document.getElementById('pass-device-screen');
+    const nameSpan = document.getElementById('next-player-name');
+    const btn = document.getElementById('i-am-ready-btn');
+
+    screen.classList.remove('hidden');
+    nameSpan.innerText = nextPlayer.name;
+    btn.innerText = `I am ${nextPlayer.name}`;
+
+    // Set up one-time click handler
+    btn.onclick = () => {
+        screen.classList.add('hidden');
+        // Resume game flow
+        playTurn();
+    };
+}
+
 // --- UI UPDATER ---
 function updateUI() {
     const p = getCurrentPlayer();
