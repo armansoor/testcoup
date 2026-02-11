@@ -37,6 +37,8 @@ function startGame() {
     for(let i=1; i<=humanCount; i++) {
         gameState.players.push(new Player(i, `Player ${i}`, false));
     }
+    // Local Player is always Player 1 for stats/UI purposes in Single/Local modes
+    window.myPlayerId = 1;
 
     // Create AI
     for(let i=1; i<=aiCount; i++) {
