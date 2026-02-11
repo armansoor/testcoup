@@ -199,10 +199,25 @@ function handleNetworkData(data, conn) {
         // HOST HANDLING
         switch(data.type) {
             case 'JOIN':
+                // Check for duplicate names
+                let finalName = data.name;
+                const hostName = document.getElementById('my-player-name').value.trim() || 'Host';
+                const existingNames = netState.clients.map(c => c.name);
+                existingNames.push(hostName);
+
+                // Also check bots (though they are usually added later, let's be safe)
+                // For simplicity, we just check human players + host.
+
+                let counter = 1;
+                while (existingNames.includes(finalName)) {
+                    finalName = `${data.name} (${counter})`;
+                    counter++;
+                }
+
                 netState.clients.push({
                     id: conn.peer,
                     conn: conn,
-                    name: data.name
+                    name: finalName
                 });
                 updateLobbyList();
                 broadcastLobbyUpdate();
