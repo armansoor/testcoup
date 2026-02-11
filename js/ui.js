@@ -19,9 +19,9 @@ function log(msg, type='') {
     }
 
     // Visual Shake for negative events
-    if (msg.includes('BLOCKS') || msg.includes('CHALLENGES') || msg.includes('lost a')) {
-        triggerAnimation(document.body, 'anim-shake');
-    }
+    // if (msg.includes('BLOCKS') || msg.includes('CHALLENGES') || msg.includes('lost a')) {
+    //    triggerAnimation(document.body, 'anim-shake');
+    // }
     // Red Flash for elimination
     if (msg.includes('ELIMINATED')) {
         triggerAnimation(document.body, 'anim-flash');

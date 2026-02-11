@@ -52,4 +52,4 @@ class SoundManager {
     }
 }
 
-const audio = new SoundManager();
+window.audio = new SoundManager();

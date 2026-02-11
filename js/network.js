@@ -1,5 +1,5 @@
 let isNetworkGame = false;
-let myPlayerId = null; // Used for rendering perspective (Host=1, Clients=assigned)
+window.myPlayerId = null; // Used for rendering perspective (Host=1, Clients=assigned)
 
 const PEER_CONFIG = {
     config: {
