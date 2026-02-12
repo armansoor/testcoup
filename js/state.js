@@ -44,12 +44,14 @@ class Player {
     }
 
     hasRole(role) {
-        return this.cards.some(c => c.role === role && !c.dead);
+        return this.cards.some(c => c && c.role === role && !c.dead);
     }
 
     // AI LOGIC CORE
     async decideAction() {
         if (!this.alive) return;
+
+        try {
         await sleep(1000); // Thinking time
 
         // 1. Must Coup if 10+ coins
@@ -125,6 +127,12 @@ class Player {
         }
 
         handleActionSubmit(action, this, target);
+        } catch (e) {
+            console.error("AI Logic Error:", e);
+            log(`AI Error: ${e.message}`, 'important');
+            // Fallback to Income to prevent hang
+            handleActionSubmit('Income', this, null);
+        }
     }
 
     doCoup() {
@@ -156,12 +164,12 @@ class Player {
         const claimedRole = actionObj.role || ACTIONS[actionObj.type]?.role;
 
         if (claimedRole) {
-            const myCopies = this.cards.filter(c => c.role === claimedRole && !c.dead).length;
+            const myCopies = this.cards.filter(c => c && c.role === claimedRole && !c.dead).length;
 
             // Check Public Knowledge (Dead cards)
             let deadCopies = 0;
             gameState.players.forEach(p => {
-                p.cards.forEach(c => { if(c.dead && c.role === claimedRole) deadCopies++; });
+                p.cards.forEach(c => { if(c && c.dead && c.role === claimedRole) deadCopies++; });
             });
             const totalKnown = myCopies + deadCopies;
 
@@ -210,7 +218,7 @@ class Player {
         }
 
         const blockerRoles = ACTIONS[actionObj.type].blockedBy;
-        const hasBlocker = this.cards.some(c => blockerRoles.includes(c.role) && !c.dead);
+        const hasBlocker = this.cards.some(c => c && blockerRoles.includes(c.role) && !c.dead);
 
         if (hasBlocker) return true; // Always block if I really can
 

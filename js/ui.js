@@ -388,7 +388,7 @@ function askHumanToLoseCard(player) {
         btns.innerHTML = '';
 
         player.cards.forEach((card, idx) => {
-            if (card.dead) return;
+            if (!card || card.dead) return;
 
             const btn = document.createElement('button');
             btn.innerText = card.role;
@@ -422,7 +422,7 @@ function askContinue(message) {
     });
 }
 
-function askHumanExchange(player, cardsToChoose) {
+function askHumanExchange(player, cardsToChoose, keepCount = 1) {
     return new Promise(resolve => {
         const panel = document.getElementById('reaction-panel');
         const title = document.getElementById('reaction-title');
@@ -431,9 +431,10 @@ function askHumanExchange(player, cardsToChoose) {
         panel.classList.remove('hidden');
 
         // Logic: Keep same number of ALIVE cards.
-        // cardsToChoose contains (Original Alive + 2 Drawn).
-        // We must return 2 cards to the deck.
-        const keepCount = cardsToChoose.length - 2;
+        // cardsToChoose contains (Original Alive + Drawn).
+        // If keepCount is provided, use it. Otherwise guess? No, server provides it.
+        // If keepCount is missing (old logic), fallback to length - 2 (but safe check)
+        if (keepCount === undefined || keepCount === null) keepCount = Math.max(1, cardsToChoose.length - 2);
 
         title.innerText = `${player.name}, select ${keepCount} card(s) to KEEP:`;
         btns.innerHTML = '';

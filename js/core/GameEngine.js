@@ -193,14 +193,15 @@ function requestLoseCard(player) {
     }
 }
 
-function requestExchange(player, cardsToChoose) {
+function requestExchange(player, cardsToChoose, keepCount) {
     if (player.isRemote) {
         return sendInteractionRequest(player, 'EXCHANGE', {
             playerId: player.id,
-            cards: cardsToChoose
+            cards: cardsToChoose,
+            keepCount: keepCount
         });
     } else {
-        return askHumanExchange(player, cardsToChoose);
+        return askHumanExchange(player, cardsToChoose, keepCount);
     }
 }
 
@@ -239,7 +240,7 @@ async function handleInteractionRequest(data) {
             break;
 
         case 'EXCHANGE':
-            response = await askHumanExchange(p, data.args.cards);
+            response = await askHumanExchange(p, data.args.cards, data.args.keepCount);
             break;
     }
 

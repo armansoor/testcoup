@@ -186,13 +186,26 @@ async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
         const oldCard = claimedPlayer.cards[cardIdx];
 
         // Return old card to deck FIRST
-        gameState.deck.push(oldCard);
+        if (oldCard) gameState.deck.push(oldCard);
 
         // Shuffle
         shuffle(gameState.deck);
 
         // Draw NEW card
-        claimedPlayer.cards[cardIdx] = gameState.deck.pop();
+        if (gameState.deck.length > 0) {
+            const newCard = gameState.deck.pop();
+            // Safety check for undefined
+            if (newCard) {
+                claimedPlayer.cards[cardIdx] = newCard;
+            } else {
+                // Critical Failure: Player has undefined card now.
+                log("Error: Deck returned undefined card.", "important");
+            }
+        } else {
+             // Deck Empty: Cannot draw. Player effectively loses the card?
+             // Or they keep the old card?
+             // Standard rules: "Cards are returned to the Court Deck, shuffled, and a replacement is drawn."
+        }
 
         updateUI(); // Ensure local UI reflects the swap immediately
         broadcastState();
@@ -269,44 +282,74 @@ async function resolveActionEffect() {
             await loseInfluence(t);
             break;
         case 'Exchange':
-            // Draw 2 cards to a temporary array
-            const drawnCards = [gameState.deck.pop(), gameState.deck.pop()];
+            // Robust Draw Logic: Draw up to 2 cards, handling empty deck
+            const drawnCards = [];
+            for (let i = 0; i < 2; i++) {
+                if (gameState.deck.length > 0) {
+                     const c = gameState.deck.pop();
+                     if (c) drawnCards.push(c);
+                }
+            }
             log(`${p.name} exchanges cards...`);
 
-            // Get current alive cards
-            const currentAlive = p.cards.filter(c => !c.dead);
-            const currentDead = p.cards.filter(c => c.dead);
+            // Get current alive cards (Safe filter)
+            const currentAlive = p.cards.filter(c => c && !c.dead);
+            const currentDead = p.cards.filter(c => c && c.dead);
 
             // Combine for selection (Alive + Drawn)
-            const cardsToChoose = [...currentAlive, ...drawnCards];
+            // Filter out any undefined just in case
+            const cardsToChoose = [...currentAlive, ...drawnCards].filter(c => c);
 
             updateUI(); // Force UI update before showing selection modal
 
-            if(p.isAI) {
-                // AI Logic: Randomly keep 'currentAlive.length' cards
-                shuffle(cardsToChoose);
+            // Target Keep Count is simply the number of alive cards the player has.
+            const keepCount = currentAlive.length;
 
-                const keepCount = currentAlive.length;
-                const kept = cardsToChoose.slice(0, keepCount);
-                const returned = cardsToChoose.slice(keepCount);
-
-                // Return unchosen to deck
-                returned.forEach(c => gameState.deck.push(c));
-                shuffle(gameState.deck);
-
-                // Update Player
-                p.cards = [...kept, ...currentDead];
+            // Safety: If cardsToChoose has fewer cards than we need to keep (e.g. deck empty AND hand corrupted),
+            // we just keep everything.
+            if (cardsToChoose.length <= keepCount) {
+                // No choice needed/possible
+                p.cards = [...cardsToChoose, ...currentDead];
             } else {
-                // Human Logic (Local or Remote)
-                const keptIds = await requestExchange(p, cardsToChoose);
+                if(p.isAI) {
+                    // AI Logic: Randomly keep 'keepCount' cards
+                    shuffle(cardsToChoose);
 
-                const kept = cardsToChoose.filter(c => keptIds.includes(c.id));
-                const returned = cardsToChoose.filter(c => !keptIds.includes(c.id));
+                    const kept = cardsToChoose.slice(0, keepCount);
+                    const returned = cardsToChoose.slice(keepCount);
 
-                returned.forEach(c => gameState.deck.push(c));
-                shuffle(gameState.deck);
+                    // Return unchosen to deck
+                    returned.forEach(c => { if(c) gameState.deck.push(c); });
+                    shuffle(gameState.deck);
 
-                p.cards = [...kept, ...currentDead];
+                    // Update Player
+                    p.cards = [...kept, ...currentDead];
+                } else {
+                    // Human Logic (Local or Remote)
+                    // cardsToChoose is safe (no undefined).
+                    // We pass keepCount explicitly to avoid UI assuming deck size.
+                    let keptIds = await requestExchange(p, cardsToChoose, keepCount);
+
+                    // Validate keptIds
+                    if (!keptIds || !Array.isArray(keptIds)) {
+                         // Fallback: Randomly keep if response invalid
+                         keptIds = cardsToChoose.slice(0, keepCount).map(c => c.id);
+                    }
+
+                    const kept = cardsToChoose.filter(c => keptIds.includes(c.id));
+
+                    // Safety: Ensure we kept the right amount. If not, fill up or trim?
+                    // Usually UI handles it. If mismatch, we trust the filter result
+                    // (unless kept is empty and keepCount > 0, which implies error).
+
+                    // Identify returned cards
+                    const returned = cardsToChoose.filter(c => !kept.includes(c));
+
+                    returned.forEach(c => { if(c) gameState.deck.push(c); });
+                    shuffle(gameState.deck);
+
+                    p.cards = [...kept, ...currentDead];
+                }
             }
 
             updateUI();
