@@ -287,11 +287,10 @@ async function resolveActionEffect() {
 
                 p.cards = [...alive, ...dead];
             } else {
-                const keptIndices = await requestExchange(p);
+                const keptIds = await requestExchange(p);
 
                 // Deck Logic (Moved from askHumanExchange)
-                // Reconstruct logic based on indices
-                // Note: askHumanExchange must return indices relative to ALIVE cards array
+                // Reconstruct logic based on IDs (More robust than indices)
                 const alive = [];
                 const dead = [];
                 p.cards.forEach(c => {
@@ -299,8 +298,8 @@ async function resolveActionEffect() {
                     else alive.push(c);
                 });
 
-                const kept = alive.filter((_, i) => keptIndices.includes(i));
-                const returned = alive.filter((_, i) => !keptIndices.includes(i));
+                const kept = alive.filter(c => keptIds.includes(c.id));
+                const returned = alive.filter(c => !keptIds.includes(c.id));
 
                 returned.forEach(c => gameState.deck.push(c));
                 shuffle(gameState.deck);

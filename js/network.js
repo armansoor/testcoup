@@ -476,8 +476,15 @@ function startNetworkGame() {
     gameState.replayData = [];
 
     // Deck
+    let cardIdCounter = 1;
     ROLES.forEach(role => {
-        for(let i=0; i<3; i++) gameState.deck.push({ role: role, dead: false });
+        for(let i=0; i<3; i++) {
+            gameState.deck.push({
+                id: `net_card_${cardIdCounter++}`,
+                role: role,
+                dead: false
+            });
+        }
     });
     shuffle(gameState.deck);
 
@@ -670,55 +677,6 @@ function captureReplaySnapshot() {
 
     // Avoid duplicates if nothing changed (optional optimization, but strict capture is safer)
     gameState.replayData.push(s);
-}
-
-// --- NETWORK INTERACTION WRAPPERS ---
-
-function requestChallenge(player, actionObj) {
-    if (player.isRemote) {
-        return sendInteractionRequest(player, 'CHALLENGE', {
-            playerId: player.id,
-            actionPlayerId: actionObj.player.id,
-            actionType: actionObj.type,
-            role: actionObj.role // claimed role
-        });
-    } else {
-        return askHumanChallenge(player, actionObj);
-    }
-}
-
-function requestBlock(player, actionObj) {
-    if (player.isRemote) {
-        return sendInteractionRequest(player, 'BLOCK', {
-            playerId: player.id,
-            actionPlayerId: actionObj.player.id,
-            actionType: actionObj.type,
-            role: actionObj.role,
-            targetId: actionObj.target ? actionObj.target.id : null
-        });
-    } else {
-        return askHumanBlock(player, actionObj);
-    }
-}
-
-function requestLoseCard(player) {
-    if (player.isRemote) {
-        return sendInteractionRequest(player, 'LOSE_CARD', {
-            playerId: player.id
-        });
-    } else {
-        return askHumanToLoseCard(player);
-    }
-}
-
-function requestExchange(player) {
-    if (player.isRemote) {
-        return sendInteractionRequest(player, 'EXCHANGE', {
-            playerId: player.id
-        });
-    } else {
-        return askHumanExchange(player);
-    }
 }
 
 function sendInteractionRequest(player, type, args) {
