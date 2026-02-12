@@ -1,10 +1,10 @@
-const CACHE_NAME = 'coup-v2';
+const CACHE_NAME = 'coup-v3';
 const ASSETS = [
   './',
   './index.html',
-  './style.css',
-  './style_anim.css',
-  './style_pass.css',
+  './style.css?v=2',
+  './style_anim.css?v=2',
+  './style_pass.css?v=2',
   './js/constants.js',
   './js/state.js',
   './js/utils.js',
