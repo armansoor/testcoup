@@ -280,6 +280,8 @@ async function resolveActionEffect() {
             // Combine for selection (Alive + Drawn)
             const cardsToChoose = [...currentAlive, ...drawnCards];
 
+            updateUI(); // Force UI update before showing selection modal
+
             if(p.isAI) {
                 // AI Logic: Randomly keep 'currentAlive.length' cards
                 shuffle(cardsToChoose);
