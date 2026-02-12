@@ -1,0 +1,148 @@
+// Core Game Loop and Turn Management
+
+function startGame() {
+    const humanCount = parseInt(document.getElementById('human-count').value);
+    const aiCount = parseInt(document.getElementById('ai-count').value);
+    const difficulty = document.getElementById('difficulty').value;
+
+    // Ensure we are in Local mode
+    isNetworkGame = false;
+    netState.isHost = false;
+    netState.peer = null;
+
+    if (humanCount + aiCount < 2) {
+        alert("Minimum 2 players required!");
+        return;
+    }
+    if (humanCount + aiCount > 6) {
+        alert("Maximum 6 players allowed!");
+        return;
+    }
+
+    gameState.players = [];
+    gameState.deck = [];
+    gameState.log = ['Welcome to Coup.'];
+    gameState.replayData = [];
+
+    // Create Deck (3 of each)
+    ROLES.forEach(role => {
+        for(let i=0; i<3; i++) gameState.deck.push({ role: role, dead: false });
+    });
+    shuffle(gameState.deck);
+
+    // Create Humans
+    for(let i=1; i<=humanCount; i++) {
+        gameState.players.push(new Player(i, `Player ${i}`, false));
+    }
+    // Local Player is always Player 1 for stats/UI purposes in Single/Local modes
+    window.myPlayerId = 1;
+
+    // Create AI
+    for(let i=1; i<=aiCount; i++) {
+        gameState.players.push(new Player(humanCount + i, `Bot ${i}`, true, difficulty));
+    }
+
+    // Deal Cards
+    gameState.players.forEach(p => {
+        p.cards = [gameState.deck.pop(), gameState.deck.pop()];
+    });
+
+    gameState.currentPlayerIndex = 0;
+
+    // Start Game Timer
+    gameState.startTime = Date.now();
+
+    document.getElementById('lobby-screen').classList.remove('active');
+    document.getElementById('game-screen').classList.add('active');
+
+    updateUI();
+    playTurn();
+}
+
+function playTurn() {
+    const p = getCurrentPlayer();
+    if (!p.alive) { nextTurn(); return; }
+
+    // Timer Logic
+    startTurnTimer();
+
+    log(`--- ${p.name}'s Turn ---`);
+    updateUI();
+    broadcastState();
+
+    if (p.isAI) {
+        p.decideAction();
+    } else if (p.isRemote) {
+        // Remote player turn: Wait for network message
+        setControls(false);
+    } else {
+        // Local Human (Host or Offline Pass & Play)
+        // If network game, only unlock if it is MY turn
+        if (isNetworkGame) {
+            if (p.id === myPlayerId) setControls(true);
+            else setControls(false);
+        } else {
+            setControls(true);
+        }
+    }
+}
+
+function nextTurn() {
+    // Stop Timer
+    stopTurnTimer();
+
+    // Check Winner
+    const alive = gameState.players.filter(p => p.alive);
+    if (alive.length === 1) {
+        const winner = alive[0];
+        log(`${winner.name} WINS THE GAME!`, 'important');
+
+        // Check Achievements
+        checkGameEndAchievements(winner);
+
+        // Capture Final State for Replay (Local & Network)
+        broadcastState();
+
+        if (isNetworkGame && netState.isHost) {
+            // Broadcast Game Over explicitly
+            broadcast({
+                type: 'GAME_OVER',
+                winnerName: winner.name,
+                isAI: winner.isAI
+            });
+        }
+
+        document.getElementById('winner-name').innerText = `${winner.name} WINS!`;
+        document.getElementById('game-end-message').innerText = `${winner.isAI ? 'The Bot' : 'The Player'} has won.`;
+
+        // Show Duration
+        const duration = Math.floor((Date.now() - gameState.startTime) / 1000);
+        const mins = Math.floor(duration / 60);
+        const secs = duration % 60;
+        document.getElementById('game-end-message').innerText += `\nMatch Time: ${mins}m ${secs}s`;
+
+        document.getElementById('game-over-modal').classList.remove('hidden');
+
+        saveMatchHistory(winner);
+        return;
+    }
+
+    do {
+        gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    } while (!gameState.players[gameState.currentPlayerIndex].alive);
+
+    // Pass & Play Privacy Check
+    const nextPlayer = getCurrentPlayer();
+    const humanPlayers = gameState.players.filter(p => !p.isAI);
+
+    // If it's a local multiplayer game (more than 1 human, no network)
+    // AND the next player is human
+    // AND the previous player was also human (or we just want to hide between turns regardless)
+    if (!isNetworkGame && humanPlayers.length > 1 && !nextPlayer.isAI) {
+        // Show Privacy Screen instead of playing directly
+        // We delay slightly to let animations finish
+        setTimeout(() => showPassDeviceScreen(nextPlayer), 1000);
+    } else {
+        setTimeout(playTurn, 1000);
+    }
+}

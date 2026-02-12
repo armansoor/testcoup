@@ -80,6 +80,7 @@
                     <div style="margin: 10px 0;">- OR -</div>
                     <input type="text" id="host-id-input" placeholder="Paste Room Code Here" style="width: 100%; box-sizing: border-box; text-align: center; margin-bottom: 10px;">
                     <button class="secondary" onclick="joinGame()">Join Game</button>
+                    <button class="secondary" onclick="joinGame(true)" style="margin-top:5px; border-color: #888; color: #aaa;">Join as Spectator</button>
                 </div>
 
                 <div id="lobby-status" class="hidden" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 10px;">
@@ -138,6 +139,7 @@
     <div id="game-screen" class="screen">
         <div class="game-header">
             <div id="turn-indicator">Turn: Player 1</div>
+            <div id="turn-timer-bar"></div>
             <button class="small-btn" onclick="if(window.audio) window.audio.toggleMute() ? this.innerText='Unmute' : this.innerText='Mute'">Mute</button>
             <button class="small-btn" onclick="toggleRules()">Rules</button>
             <button id="quit-btn" class="small-btn red" onclick="location.reload()">Quit</button>
@@ -224,6 +226,9 @@
     <script src="js/utils.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/network.js"></script>
+    <script src="js/core/GameEngine.js"></script>
+    <script src="js/core/ActionResolver.js"></script>
+    <script src="js/core/ReplayManager.js"></script>
     <script src="js/game.js"></script>
     <script src="js/audio.js"></script>
     <script src="js/stats.js"></script>
