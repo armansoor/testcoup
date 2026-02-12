@@ -272,16 +272,9 @@ function showHistory() {
 
         const date = new Date(entry.date).toLocaleString();
 
-        let durationStr = "";
-        if (entry.duration) {
-             const mins = Math.floor(entry.duration / 60);
-             const secs = entry.duration % 60;
-             durationStr = ` | Duration: ${mins}m ${secs}s`;
-        }
-
         div.innerHTML = `
             <div style="font-weight:bold; color:#4caf50;">Winner: ${entry.winner}</div>
-            <div style="font-size:0.8rem; color:#aaa;">${date}${durationStr}</div>
+            <div style="font-size:0.8rem; color:#aaa;">${date}</div>
             <div style="font-size:0.8rem;">Players: ${entry.players.join(', ')}</div>
             <button class="small-btn" onclick="loadReplay(${idx})" style="margin-top:5px; background:#2196F3; width: auto;">Watch Replay</button>
         `;
@@ -432,9 +425,13 @@ function askHumanExchange(player, cardsToChoose, keepCount = 1) {
 
         // Logic: Keep same number of ALIVE cards.
         // cardsToChoose contains (Original Alive + Drawn).
-        // If keepCount is provided, use it. Otherwise guess? No, server provides it.
-        // If keepCount is missing (old logic), fallback to length - 2 (but safe check)
-        if (keepCount === undefined || keepCount === null) keepCount = Math.max(1, cardsToChoose.length - 2);
+        // keepCount is explicitly provided by the core logic.
+
+        // Sanity Check
+        if (keepCount === undefined || keepCount === null || keepCount <= 0) {
+             console.warn("UI askHumanExchange: keepCount invalid", keepCount);
+             keepCount = 1;
+        }
 
         title.innerText = `${player.name}, select ${keepCount} card(s) to KEEP:`;
         btns.innerHTML = '';
@@ -484,38 +481,6 @@ function askHumanExchange(player, cardsToChoose, keepCount = 1) {
         btns.appendChild(cardContainer);
         btns.appendChild(confirmBtn);
     });
-}
-
-// --- TIMER VISUALS ---
-let timerInterval = null;
-
-function startTurnTimer(durationSec = 60) {
-    const bar = document.getElementById('turn-timer-bar');
-    if (!bar) return;
-
-    clearInterval(timerInterval);
-    bar.style.transition = 'none';
-    bar.style.width = '100%';
-
-    // Force reflow
-    void bar.offsetWidth;
-
-    bar.style.transition = `width ${durationSec}s linear`;
-    bar.style.width = '0%';
-
-    timerInterval = setInterval(() => {
-        // We could enforce timeout logic here if desired
-        // For now, it's just visual
-    }, durationSec * 1000);
-}
-
-function stopTurnTimer() {
-    const bar = document.getElementById('turn-timer-bar');
-    if (!bar) return;
-
-    clearInterval(timerInterval);
-    bar.style.transition = 'none';
-    bar.style.width = '0%';
 }
 
 // --- PWA INSTALL BUTTON ---

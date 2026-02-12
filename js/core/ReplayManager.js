@@ -7,8 +7,7 @@ function saveMatchHistory(winner) {
         winner: winner.name,
         players: gameState.players.map(p => p.name),
         log: gameState.log,
-        replayData: gameState.replayData || [],
-        duration: Math.floor((Date.now() - gameState.startTime) / 1000)
+        replayData: gameState.replayData || []
     };
 
     let history = [];
