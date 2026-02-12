@@ -285,6 +285,10 @@ function handleNetworkData(data, conn) {
             case 'GAME_OVER':
                 handleGameOver(data);
                 break;
+            case 'JOIN_ERROR':
+                alert(data.message);
+                location.reload();
+                break;
         }
     }
 }
@@ -348,21 +352,24 @@ function handleJoinRequest(data, conn) {
     }
 
     // NEW JOIN
-    let finalName = data.name;
     const hostName = document.getElementById('my-player-name').value.trim() || 'Host';
     const existingNames = netState.clients.map(c => c.name);
     existingNames.push(hostName);
 
-    let counter = 1;
-    while (existingNames.includes(finalName)) {
-        finalName = `${data.name} (${counter})`;
-        counter++;
+    if (existingNames.includes(data.name)) {
+        // Name Taken - REJECT
+        conn.send({
+            type: 'JOIN_ERROR',
+            message: 'Name already taken! Please choose another.'
+        });
+        setTimeout(() => conn.close(), 500); // Give time for message to send
+        return;
     }
 
     netState.clients.push({
         id: conn.peer,
         conn: conn,
-        name: finalName,
+        name: data.name,
         status: 'connected',
         isSpectator: false
     });
