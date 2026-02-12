@@ -90,7 +90,7 @@ class Player {
             else if (hasDuke || Math.random() > 0.4) {
                 action = 'Tax';
             }
-            // Steal if Captain or desperate
+            // Steal if Captain or desperate (only steal if opponent has coins)
             else if (hasCaptain || Math.random() > 0.5) {
                 action = 'Steal';
             }
@@ -133,6 +133,13 @@ class Player {
                  action = 'Income';
                  target = null;
              }
+        }
+
+        // SAFETY CHECK: Ensure we can afford the action
+        if (ACTIONS[action].cost > this.coins) {
+            console.warn(`AI ${this.name} tried to afford ${action} with ${this.coins} coins. Fallback to Income.`);
+            action = 'Income';
+            target = null;
         }
 
         handleActionSubmit(action, this, target);
@@ -902,6 +909,7 @@ function getCurrentPlayer() { return gameState.players[gameState.currentPlayerIn
 function getStrongestOpponent(me) {
     // Target player with most coins or most cards
     const foes = gameState.players.filter(p => p.id !== me.id && p.alive);
+    if (foes.length === 0) return null;
     return foes.sort((a,b) => b.coins - a.coins)[0];
 }
 function shuffle(array) {
