@@ -42,7 +42,7 @@ function getStrongestOpponent(player) {
     gameState.players.forEach(p => {
         if (p.id === player.id || !p.alive) return;
 
-        const aliveCount = p.cards.filter(c => !c.dead).length;
+        const aliveCount = p.cards.filter(c => c && !c.dead).length;
 
         // Priority 1: Most Cards
         if (aliveCount > maxCards) {
