@@ -33,3 +33,31 @@ function sanitize(str) {
         }[s];
     });
 }
+
+function getStrongestOpponent(player) {
+    let target = null;
+    let maxCards = -1;
+    let maxCoins = -1;
+
+    gameState.players.forEach(p => {
+        if (p.id === player.id || !p.alive) return;
+
+        const aliveCount = p.cards.filter(c => !c.dead).length;
+
+        // Priority 1: Most Cards
+        if (aliveCount > maxCards) {
+            maxCards = aliveCount;
+            maxCoins = p.coins;
+            target = p;
+        }
+        // Priority 2: Most Coins (Tie-breaker)
+        else if (aliveCount === maxCards) {
+            if (p.coins > maxCoins) {
+                maxCoins = p.coins;
+                target = p;
+            }
+        }
+    });
+
+    return target;
+}
