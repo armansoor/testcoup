@@ -440,16 +440,16 @@ function askHumanExchange(player) {
             if (!c.dead) aliveCards.push(c);
         });
 
-        // Selected indices (from aliveCards array)
-        const selectedIndices = new Set();
+        // Selected IDs (using card.id for robustness)
+        const selectedIds = new Set();
 
         const confirmBtn = document.createElement('button');
         confirmBtn.innerText = `Confirm (0/${keepCount})`;
         confirmBtn.disabled = true;
         confirmBtn.onclick = () => {
-            // Return selected INDICES relative to alive array
+            // Return selected IDs
             panel.classList.add('hidden');
-            resolve(Array.from(selectedIndices));
+            resolve(Array.from(selectedIds));
         };
 
         const cardContainer = document.createElement('div');
@@ -463,18 +463,18 @@ function askHumanExchange(player) {
             cDiv.className = 'player-card';
             cDiv.innerText = card.role;
             cDiv.onclick = () => {
-                if (selectedIndices.has(idx)) {
-                    selectedIndices.delete(idx);
+                if (selectedIds.has(card.id)) {
+                    selectedIds.delete(card.id);
                     cDiv.classList.remove('selected');
                 } else {
-                    if (selectedIndices.size < keepCount) {
-                        selectedIndices.add(idx);
+                    if (selectedIds.size < keepCount) {
+                        selectedIds.add(card.id);
                         cDiv.classList.add('selected');
                     }
                 }
 
-                confirmBtn.innerText = `Confirm (${selectedIndices.size}/${keepCount})`;
-                confirmBtn.disabled = selectedIndices.size !== keepCount;
+                confirmBtn.innerText = `Confirm (${selectedIds.size}/${keepCount})`;
+                confirmBtn.disabled = selectedIds.size !== keepCount;
             };
             cardContainer.appendChild(cDiv);
         });

@@ -25,8 +25,15 @@ function startGame() {
     gameState.replayData = [];
 
     // Create Deck (3 of each)
+    let cardIdCounter = 1;
     ROLES.forEach(role => {
-        for(let i=0; i<3; i++) gameState.deck.push({ role: role, dead: false });
+        for(let i=0; i<3; i++) {
+            gameState.deck.push({
+                id: `card_${cardIdCounter++}`,
+                role: role,
+                dead: false
+            });
+        }
     });
     shuffle(gameState.deck);
 
@@ -144,5 +151,102 @@ function nextTurn() {
         setTimeout(() => showPassDeviceScreen(nextPlayer), 1000);
     } else {
         setTimeout(playTurn, 1000);
+    }
+}
+
+// --- INTERACTION LOGIC (Requests & Handling) ---
+
+function requestChallenge(player, actionObj) {
+    if (player.isRemote) {
+        return sendInteractionRequest(player, 'CHALLENGE', {
+            playerId: player.id,
+            actionPlayerId: actionObj.player.id,
+            actionType: actionObj.type,
+            role: actionObj.role
+        });
+    } else {
+        return askHumanChallenge(player, actionObj);
+    }
+}
+
+function requestBlock(player, actionObj) {
+    if (player.isRemote) {
+        return sendInteractionRequest(player, 'BLOCK', {
+            playerId: player.id,
+            actionPlayerId: actionObj.player.id,
+            actionType: actionObj.type,
+            role: actionObj.role,
+            targetId: actionObj.target ? actionObj.target.id : null
+        });
+    } else {
+        return askHumanBlock(player, actionObj);
+    }
+}
+
+function requestLoseCard(player) {
+    if (player.isRemote) {
+        return sendInteractionRequest(player, 'LOSE_CARD', {
+            playerId: player.id
+        });
+    } else {
+        return askHumanToLoseCard(player);
+    }
+}
+
+function requestExchange(player) {
+    if (player.isRemote) {
+        return sendInteractionRequest(player, 'EXCHANGE', {
+            playerId: player.id
+        });
+    } else {
+        return askHumanExchange(player);
+    }
+}
+
+async function handleInteractionRequest(data) {
+    // data = { reqId, requestType, args }
+    const p = gameState.players.find(pl => pl.id === data.args.playerId);
+    // Safety check if p is me? usually p is me if I received this.
+    // However, args.playerId is just for context or UI.
+
+    let response = null;
+
+    switch(data.requestType) {
+        case 'CHALLENGE': {
+            const actor = gameState.players.find(pl => pl.id === data.args.actionPlayerId);
+            const actionObj = {
+                type: data.args.actionType,
+                player: actor,
+                role: data.args.role
+            };
+            response = await askHumanChallenge(p, actionObj);
+            break;
+        }
+        case 'BLOCK': {
+            const actorB = gameState.players.find(pl => pl.id === data.args.actionPlayerId);
+            const actionObjB = {
+                type: data.args.actionType,
+                player: actorB,
+                role: data.args.role,
+                target: data.args.targetId ? gameState.players.find(pl => pl.id === data.args.targetId) : null
+            };
+            response = await askHumanBlock(p, actionObjB);
+            break;
+        }
+        case 'LOSE_CARD':
+            response = await askHumanToLoseCard(p);
+            break;
+
+        case 'EXCHANGE':
+            response = await askHumanExchange(p);
+            break;
+    }
+
+    if (netState.hostConn && netState.hostConn.open) {
+        netState.hostConn.send({
+            type: 'INTERACTION_RESPONSE',
+            reqId: data.reqId,
+            response: response
+        });
     }
 }
