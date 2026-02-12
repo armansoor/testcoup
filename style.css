@@ -157,6 +157,22 @@ button.disabled-force { opacity: 0.3; pointer-events: none; }
     outline: none;
 }
 
+/* --- TURN TIMER --- */
+#turn-timer-bar {
+    width: 0%;
+    height: 4px;
+    background: gold;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    transition: width 0.1s linear;
+}
+
+.game-header {
+    position: relative; /* Context for absolute timer bar */
+}
+
+
 /* --- LARGE SCREEN FIXES --- */
 /* REPLAY CONTROLS MOBILE */
 @media (max-width: 600px) {

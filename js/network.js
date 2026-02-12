@@ -17,9 +17,10 @@ const PEER_CONFIG = {
 let netState = {
     peer: null,
     hostConn: null, // Client's connection to host
-    clients: [], // Host's list of { id, conn, name }
+    clients: [], // Host's list of { id, conn, name, status, isSpectator }
     isHost: false,
-    pendingRequests: {} // Map of request ID to resolve function
+    pendingRequests: {}, // Map of request ID to resolve function
+    reconnectTimers: {} // Map of peerId -> timeoutId
 };
 
 // --- HOST LOGIC ---
@@ -39,6 +40,16 @@ function initHost() {
         return;
     }
 
+    // CUSTOM ROOM NAME
+    let roomId = prompt("Enter a Custom Room Name (Optional, leave blank for auto-generated):");
+    if (roomId) {
+        roomId = roomId.trim().replace(/[^a-zA-Z0-9_-]/g, ''); // Sanitize
+        if (roomId.length < 3) {
+            alert("Custom Room Name too short. Using auto-generated ID.");
+            roomId = null;
+        }
+    }
+
     isNetworkGame = true;
     netState.isHost = true;
 
@@ -47,7 +58,7 @@ function initHost() {
     document.getElementById('host-room-info').classList.remove('hidden');
     document.getElementById('connection-status').innerText = "Initializing Network...";
 
-    netState.peer = new Peer(null, PEER_CONFIG); // Auto-generate ID
+    netState.peer = new Peer(roomId, PEER_CONFIG); // Use custom ID if provided
 
     netState.peer.on('error', (err) => {
         console.error("PeerJS Error:", err);
@@ -83,12 +94,42 @@ function initHost() {
         });
         conn.on('data', (data) => handleNetworkData(data, conn));
         conn.on('close', () => {
-            netState.clients = netState.clients.filter(c => c.conn !== conn);
-            updateLobbyList();
-            broadcastLobbyUpdate();
-            markPlayerDisconnected(conn.peer);
+            handleClientDisconnect(conn.peer);
         });
     });
+}
+
+function handleClientDisconnect(peerId) {
+    const clientIndex = netState.clients.findIndex(c => c.id === peerId);
+    if (clientIndex === -1) return;
+
+    const client = netState.clients[clientIndex];
+    client.status = 'disconnected';
+
+    console.log(`Client ${client.name} disconnected. Starting grace period.`);
+
+    // In Lobby: Remove immediately
+    if (document.getElementById('lobby-screen').classList.contains('active')) {
+         netState.clients.splice(clientIndex, 1);
+         updateLobbyList();
+         broadcastLobbyUpdate();
+         return;
+    }
+
+    // Spectator Disconnect - Just remove
+    if (client.isSpectator) {
+         netState.clients.splice(clientIndex, 1);
+         return;
+    }
+
+    // In Game: Start Grace Period (30s)
+    log(`${client.name} disconnected. Waiting 30s for reconnect...`, 'important');
+    updateUI(); // Show disconnected status visually if supported
+
+    netState.reconnectTimers[peerId] = setTimeout(() => {
+        markPlayerDisconnected(peerId);
+        delete netState.reconnectTimers[peerId];
+    }, 30000); // 30 seconds
 }
 
 function copyRoomCode() {
@@ -102,7 +143,7 @@ function copyRoomCode() {
 }
 
 // --- CLIENT LOGIC ---
-function joinGame() {
+function joinGame(isSpectator = false) {
     if (!navigator.onLine) {
         alert("Internet connection required for Online Multiplayer.");
         return;
@@ -174,7 +215,9 @@ function joinGame() {
         conn.on('open', () => {
             clearTimeout(timeout);
             document.getElementById('connection-status').innerText = "Connected! Waiting for Host...";
-            conn.send({ type: 'JOIN', name: name });
+            // Send RECONNECT flag if we suspect we were dropped?
+            // Ideally, we just send JOIN and Host handles the rest.
+            conn.send({ type: 'JOIN', name: name, isSpectator: isSpectator });
         });
 
         conn.on('data', (data) => handleNetworkData(data, conn));
@@ -199,28 +242,7 @@ function handleNetworkData(data, conn) {
         // HOST HANDLING
         switch(data.type) {
             case 'JOIN':
-                // Check for duplicate names
-                let finalName = data.name;
-                const hostName = document.getElementById('my-player-name').value.trim() || 'Host';
-                const existingNames = netState.clients.map(c => c.name);
-                existingNames.push(hostName);
-
-                // Also check bots (though they are usually added later, let's be safe)
-                // For simplicity, we just check human players + host.
-
-                let counter = 1;
-                while (existingNames.includes(finalName)) {
-                    finalName = `${data.name} (${counter})`;
-                    counter++;
-                }
-
-                netState.clients.push({
-                    id: conn.peer,
-                    conn: conn,
-                    name: finalName
-                });
-                updateLobbyList();
-                broadcastLobbyUpdate();
+                handleJoinRequest(data, conn);
                 break;
             case 'ACTION':
                 // Client submitting an action
@@ -267,13 +289,98 @@ function handleNetworkData(data, conn) {
     }
 }
 
+function handleJoinRequest(data, conn) {
+    // RECONNECTION LOGIC
+    // Check if a client with this Name was recently disconnected
+    const disconnectedClient = netState.clients.find(c => c.name === data.name && c.status === 'disconnected');
+
+    if (disconnectedClient) {
+        // Reconnect them!
+        clearTimeout(netState.reconnectTimers[disconnectedClient.id]);
+        delete netState.reconnectTimers[disconnectedClient.id];
+
+        // Update Connection
+        disconnectedClient.id = conn.peer;
+        disconnectedClient.conn = conn;
+        disconnectedClient.status = 'connected';
+
+        console.log(`Client ${data.name} reconnected!`);
+        log(`${data.name} reconnected!`, 'system');
+
+        // Update Game State Peer ID
+        const p = gameState.players.find(pl => pl.name === data.name);
+        if (p) p.peerId = conn.peer;
+
+        // Send current state immediately
+        conn.send({
+            type: 'GAME_START', // Reuse start to force state sync
+            playerId: p ? p.id : 0,
+            state: serializeState()
+        });
+
+        return;
+    }
+
+    // SPECTATOR LOGIC
+    if (data.isSpectator) {
+         netState.clients.push({
+            id: conn.peer,
+            conn: conn,
+            name: `${data.name} (Spectator)`,
+            status: 'connected',
+            isSpectator: true
+        });
+
+        // Send them current state if game is running
+        if (gameState.players.length > 0) {
+            conn.send({
+                type: 'GAME_START',
+                playerId: -1, // Spectator ID
+                state: serializeState()
+            });
+        }
+
+        updateLobbyList();
+        // Don't broadcast spectator join to lobby to avoid clutter? Or yes?
+        // Let's broadcast it so people know who is watching.
+        broadcastLobbyUpdate();
+        return;
+    }
+
+    // NEW JOIN
+    let finalName = data.name;
+    const hostName = document.getElementById('my-player-name').value.trim() || 'Host';
+    const existingNames = netState.clients.map(c => c.name);
+    existingNames.push(hostName);
+
+    let counter = 1;
+    while (existingNames.includes(finalName)) {
+        finalName = `${data.name} (${counter})`;
+        counter++;
+    }
+
+    netState.clients.push({
+        id: conn.peer,
+        conn: conn,
+        name: finalName,
+        status: 'connected',
+        isSpectator: false
+    });
+    updateLobbyList();
+    broadcastLobbyUpdate();
+}
+
+
 function handleGameOver(data) {
     // Ensure log is up to date (usually State Update comes before this, but safe to assume log is sync)
     document.getElementById('winner-name').innerText = `${data.winnerName} WINS!`;
     document.getElementById('game-end-message').innerText = `${data.isAI ? 'The Bot' : 'The Player'} has won.`;
     document.getElementById('game-over-modal').classList.remove('hidden');
 
-    saveMatchHistory({ name: data.winnerName });
+    // Spectators don't save match history yet (or maybe they should?)
+    if (myPlayerId !== -1) {
+        saveMatchHistory({ name: data.winnerName });
+    }
 }
 
 // --- LOBBY HELPERS ---
@@ -296,6 +403,14 @@ function updateLobbyList() {
     netState.clients.forEach(c => {
         const li = document.createElement('li');
         li.innerText = c.name;
+        if (c.status === 'disconnected') {
+            li.style.color = 'red';
+            li.innerText += " (Offline)";
+        }
+        if (c.isSpectator) {
+            li.style.color = '#aaa';
+            li.style.fontStyle = 'italic';
+        }
         list.appendChild(li);
     });
 
@@ -345,8 +460,11 @@ function startNetworkGame() {
 
     const aiCount = parseInt(document.getElementById('network-ai-count').value);
 
+    // Filter active PLAYERS (not spectators)
+    const activePlayers = netState.clients.filter(c => c.status === 'connected' && !c.isSpectator);
+
     // Check Minimum Players (Host + at least 1 other)
-    if (netState.clients.length + aiCount < 1) {
+    if (activePlayers.length + aiCount < 1) {
         alert("You need at least 1 other player (Human or AI) to start!");
         return;
     }
@@ -369,8 +487,8 @@ function startNetworkGame() {
     gameState.players.push(hostP);
     myPlayerId = 1;
 
-    // Clients
-    netState.clients.forEach((c, idx) => {
+    // Clients (Active Players Only)
+    activePlayers.forEach((c, idx) => {
         const pid = idx + 2;
         const p = new Player(pid, c.name || `Player ${pid}`, false);
         p.isRemote = true; // Flag for logic
@@ -398,13 +516,21 @@ function startNetworkGame() {
     document.getElementById('lobby-screen').classList.remove('active');
     document.getElementById('game-screen').classList.add('active');
 
-    // Broadcast Start
+    // Broadcast Start to ALL (Players + Spectators)
+    const initialState = serializeState();
     netState.clients.forEach(c => {
-        const p = gameState.players.find(pl => pl.peerId === c.id);
+        if (c.status !== 'connected') return;
+
+        let targetPid = -1; // Default Spectator
+        if (!c.isSpectator) {
+            const p = gameState.players.find(pl => pl.peerId === c.id);
+            if (p) targetPid = p.id;
+        }
+
         c.conn.send({
             type: 'GAME_START',
-            playerId: p.id,
-            state: serializeState()
+            playerId: targetPid,
+            state: initialState
         });
     });
 
@@ -415,6 +541,12 @@ function startNetworkGame() {
 function setupClientGame(initialState) {
     document.getElementById('lobby-screen').classList.remove('active');
     document.getElementById('game-screen').classList.add('active');
+
+    if (myPlayerId === -1) {
+        // Spectator specific UI tweaks?
+        document.getElementById('action-panel').classList.add('hidden'); // Hide controls
+        document.getElementById('active-player-name').innerText = "Spectating Mode";
+    }
 
     gameState.replayData = [];
 
@@ -595,7 +727,7 @@ function sendInteractionRequest(player, type, args) {
         netState.pendingRequests[reqId] = resolve;
 
         const client = netState.clients.find(c => c.id === player.peerId);
-        if (client && client.conn) {
+        if (client && client.conn && client.status === 'connected') {
             client.conn.send({
                 type: 'INTERACTION_REQUEST',
                 reqId: reqId,
@@ -603,8 +735,8 @@ function sendInteractionRequest(player, type, args) {
                 args: args
             });
         } else {
-            console.error("Client not found for interaction:", player.name);
-            resolve(null); // Fallback
+            console.error("Client not found or offline for interaction:", player.name);
+            resolve(null); // Fallback: Auto-pass if offline
         }
     });
 }
@@ -614,7 +746,7 @@ function markPlayerDisconnected(peerId) {
 
     const p = gameState.players.find(pl => pl.peerId === peerId);
     if (p) {
-        log(`${p.name} disconnected.`, 'important');
+        log(`${p.name} timed out.`, 'important');
         p.alive = false; // Kill them to skip turns
         p.cards.forEach(c => c.dead = true); // Mark cards dead
 

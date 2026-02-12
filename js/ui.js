@@ -1,3 +1,123 @@
+// --- UI UPDATER ---
+function updateUI() {
+    const p = getCurrentPlayer();
+
+    // Header
+    document.getElementById('turn-indicator').innerText = `Turn: ${p.name}`;
+
+    // Opponents
+    const oppContainer = document.getElementById('opponents-container');
+    oppContainer.innerHTML = '';
+    gameState.players.forEach(pl => {
+        // Filter out the player shown in the main area
+        let shouldHide = false;
+        if (isNetworkGame) {
+            if (pl.id === myPlayerId) shouldHide = true;
+        } else {
+            // Local: Hide current player if human (Pass & Play)
+            // Or if Single Player, hide the single human (Player 1)
+            const humans = gameState.players.filter(x => !x.isAI);
+            if (humans.length === 1) {
+                 if (pl.id === humans[0].id) shouldHide = true;
+            } else {
+                 if (pl.id === p.id && !p.isAI) shouldHide = true;
+            }
+        }
+
+        // Spectator View: Show everyone
+        if (myPlayerId === -1) shouldHide = false;
+
+        if (shouldHide) return;
+
+        const div = document.createElement('div');
+        div.className = `opponent-card ${pl.id === p.id ? 'active-turn' : ''}`;
+        if (!pl.alive) div.style.opacity = 0.5;
+
+        // Disconnected visual
+        if (pl.peerId && isNetworkGame && netState.isHost) {
+             const client = netState.clients.find(c => c.id === pl.peerId);
+             if (client && client.status === 'disconnected') {
+                 div.style.border = '2px dashed red';
+             }
+        }
+
+        let cardHtml = '';
+        pl.cards.forEach(c => {
+            if (c.dead) cardHtml += `<span class="card-back" style="background:red"></span>`;
+            else {
+                if (isReplayMode) {
+                    cardHtml += `<span class="card-back" style="width:auto; min-width:30px; background:#ddd; color:#000; font-size:0.5rem; line-height:38px; overflow:hidden; vertical-align:middle;">${c.role.substr(0,3)}</span>`;
+                } else {
+                    cardHtml += `<span class="card-back"></span>`;
+                }
+            }
+        });
+
+        div.innerHTML = `
+            <div><strong>${pl.name}</strong></div>
+            <div>${pl.coins} Coins</div>
+            <div>${cardHtml}</div>
+        `;
+        oppContainer.appendChild(div);
+    });
+
+    // Player Area
+    const playerArea = document.getElementById('player-area');
+    playerArea.classList.add('hidden'); // Default hidden
+
+    let me = null;
+    if (isNetworkGame) {
+        if (myPlayerId !== -1) {
+             me = gameState.players.find(pl => pl.id === myPlayerId);
+        }
+    } else {
+        const humans = gameState.players.filter(pl => !pl.isAI);
+        if (humans.length === 1) me = humans[0];
+        else if (!p.isAI) me = p; // Pass & Play active
+    }
+
+    if (me) {
+        playerArea.classList.remove('hidden');
+
+        let statusText = me.name;
+        if (p.id !== me.id) statusText += ` (Waiting for ${p.name})`;
+        else statusText += " (Your Turn)";
+
+        document.getElementById('active-player-name').innerText = statusText;
+
+        // Coin Animation Logic
+        const oldCoins = parseInt(document.getElementById('player-coins').innerText);
+        if (oldCoins < me.coins) {
+             if (window.audio) window.audio.playCoin();
+             // Spawn Floating Text
+             const diff = me.coins - oldCoins;
+             spawnFloatingText(`+${diff}`, document.querySelector('.coins-display'));
+        }
+
+        document.getElementById('player-coins').innerText = me.coins;
+
+        const cardBox = document.getElementById('player-cards');
+        cardBox.innerHTML = '';
+        me.cards.forEach((c, idx) => {
+            const cDiv = document.createElement('div');
+            cDiv.className = `player-card ${c.dead ? 'dead' : ''}`;
+            cDiv.innerText = c.role;
+            cardBox.appendChild(cDiv);
+        });
+    } else {
+         // Watching bots only or Spectator
+         if (myPlayerId === -1) {
+             // Spectator
+             playerArea.classList.add('hidden'); // Hide player area for spectator entirely?
+             // Or maybe show "Spectating..."
+         } else {
+             playerArea.classList.remove('hidden');
+             document.getElementById('active-player-name').innerText = `${p.name} (AI) is thinking...`;
+             document.getElementById('player-cards').innerHTML = '';
+         }
+    }
+}
+
 function log(msg, type='') {
     gameState.log.push(msg);
     const div = document.createElement('div');
@@ -75,106 +195,6 @@ function showPassDeviceScreen(nextPlayer) {
     };
 }
 
-// --- UI UPDATER ---
-function updateUI() {
-    const p = getCurrentPlayer();
-
-    // Header
-    document.getElementById('turn-indicator').innerText = `Turn: ${p.name}`;
-
-    // Opponents
-    const oppContainer = document.getElementById('opponents-container');
-    oppContainer.innerHTML = '';
-    gameState.players.forEach(pl => {
-        // Filter out the player shown in the main area
-        let shouldHide = false;
-        if (isNetworkGame) {
-            if (pl.id === myPlayerId) shouldHide = true;
-        } else {
-            // Local: Hide current player if human (Pass & Play)
-            // Or if Single Player, hide the single human (Player 1)
-            const humans = gameState.players.filter(x => !x.isAI);
-            if (humans.length === 1) {
-                 if (pl.id === humans[0].id) shouldHide = true;
-            } else {
-                 if (pl.id === p.id && !p.isAI) shouldHide = true;
-            }
-        }
-
-        if (shouldHide) return;
-
-        const div = document.createElement('div');
-        div.className = `opponent-card ${pl.id === p.id ? 'active-turn' : ''}`;
-        if (!pl.alive) div.style.opacity = 0.5;
-
-        let cardHtml = '';
-        pl.cards.forEach(c => {
-            if (c.dead) cardHtml += `<span class="card-back" style="background:red"></span>`;
-            else {
-                if (isReplayMode) {
-                    cardHtml += `<span class="card-back" style="width:auto; min-width:30px; background:#ddd; color:#000; font-size:0.5rem; line-height:38px; overflow:hidden; vertical-align:middle;">${c.role.substr(0,3)}</span>`;
-                } else {
-                    cardHtml += `<span class="card-back"></span>`;
-                }
-            }
-        });
-
-        div.innerHTML = `
-            <div><strong>${pl.name}</strong></div>
-            <div>${pl.coins} Coins</div>
-            <div>${cardHtml}</div>
-        `;
-        oppContainer.appendChild(div);
-    });
-
-    // Player Area
-    const playerArea = document.getElementById('player-area');
-    playerArea.classList.add('hidden'); // Default hidden
-
-    let me = null;
-    if (isNetworkGame) {
-        me = gameState.players.find(pl => pl.id === myPlayerId);
-    } else {
-        const humans = gameState.players.filter(pl => !pl.isAI);
-        if (humans.length === 1) me = humans[0];
-        else if (!p.isAI) me = p; // Pass & Play active
-    }
-
-    if (me) {
-        playerArea.classList.remove('hidden');
-
-        let statusText = me.name;
-        if (p.id !== me.id) statusText += ` (Waiting for ${p.name})`;
-        else statusText += " (Your Turn)";
-
-        document.getElementById('active-player-name').innerText = statusText;
-
-        // Coin Animation Logic
-        const oldCoins = parseInt(document.getElementById('player-coins').innerText);
-        if (oldCoins < me.coins) {
-             if (window.audio) window.audio.playCoin();
-             // Spawn Floating Text
-             const diff = me.coins - oldCoins;
-             spawnFloatingText(`+${diff}`, document.querySelector('.coins-display'));
-        }
-
-        document.getElementById('player-coins').innerText = me.coins;
-
-        const cardBox = document.getElementById('player-cards');
-        cardBox.innerHTML = '';
-        me.cards.forEach((c, idx) => {
-            const cDiv = document.createElement('div');
-            cDiv.className = `player-card ${c.dead ? 'dead' : ''}`;
-            cDiv.innerText = c.role;
-            cardBox.appendChild(cDiv);
-        });
-    } else {
-         // Watching bots only
-         playerArea.classList.remove('hidden');
-         document.getElementById('active-player-name').innerText = `${p.name} (AI) is thinking...`;
-         document.getElementById('player-cards').innerHTML = '';
-    }
-}
 
 function setControls(active) {
     const btns = document.querySelectorAll('#action-panel button');
@@ -249,9 +269,17 @@ function showHistory() {
         div.style.border = '1px solid #444';
 
         const date = new Date(entry.date).toLocaleString();
+
+        let durationStr = "";
+        if (entry.duration) {
+             const mins = Math.floor(entry.duration / 60);
+             const secs = entry.duration % 60;
+             durationStr = ` | Duration: ${mins}m ${secs}s`;
+        }
+
         div.innerHTML = `
             <div style="font-weight:bold; color:#4caf50;">Winner: ${entry.winner}</div>
-            <div style="font-size:0.8rem; color:#aaa;">${date}</div>
+            <div style="font-size:0.8rem; color:#aaa;">${date}${durationStr}</div>
             <div style="font-size:0.8rem;">Players: ${entry.players.join(', ')}</div>
             <button class="small-btn" onclick="loadReplay(${idx})" style="margin-top:5px; background:#2196F3; width: auto;">Watch Replay</button>
         `;
@@ -454,6 +482,38 @@ function askHumanExchange(player) {
         btns.appendChild(cardContainer);
         btns.appendChild(confirmBtn);
     });
+}
+
+// --- TIMER VISUALS ---
+let timerInterval = null;
+
+function startTurnTimer(durationSec = 60) {
+    const bar = document.getElementById('turn-timer-bar');
+    if (!bar) return;
+
+    clearInterval(timerInterval);
+    bar.style.transition = 'none';
+    bar.style.width = '100%';
+
+    // Force reflow
+    void bar.offsetWidth;
+
+    bar.style.transition = `width ${durationSec}s linear`;
+    bar.style.width = '0%';
+
+    timerInterval = setInterval(() => {
+        // We could enforce timeout logic here if desired
+        // For now, it's just visual
+    }, durationSec * 1000);
+}
+
+function stopTurnTimer() {
+    const bar = document.getElementById('turn-timer-bar');
+    if (!bar) return;
+
+    clearInterval(timerInterval);
+    bar.style.transition = 'none';
+    bar.style.width = '0%';
 }
 
 // --- PWA INSTALL BUTTON ---
