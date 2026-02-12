@@ -43,6 +43,7 @@ function updateUI() {
 
         let cardHtml = '';
         pl.cards.forEach(c => {
+            if (!c) return;
             if (c.dead) cardHtml += `<span class="card-back" style="background:red"></span>`;
             else {
                 if (isReplayMode) {
@@ -99,6 +100,7 @@ function updateUI() {
         const cardBox = document.getElementById('player-cards');
         cardBox.innerHTML = '';
         me.cards.forEach((c, idx) => {
+            if (!c) return;
             const cDiv = document.createElement('div');
             cDiv.className = `player-card ${c.dead ? 'dead' : ''}`;
             cDiv.innerText = c.role;
