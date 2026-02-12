@@ -56,9 +56,6 @@ function startGame() {
 
     gameState.currentPlayerIndex = 0;
 
-    // Start Game Timer
-    gameState.startTime = Date.now();
-
     document.getElementById('lobby-screen').classList.remove('active');
     document.getElementById('game-screen').classList.add('active');
 
@@ -69,9 +66,6 @@ function startGame() {
 function playTurn() {
     const p = getCurrentPlayer();
     if (!p.alive) { nextTurn(); return; }
-
-    // Timer Logic
-    startTurnTimer();
 
     log(`--- ${p.name}'s Turn ---`);
     updateUI();
@@ -95,9 +89,6 @@ function playTurn() {
 }
 
 function nextTurn() {
-    // Stop Timer
-    stopTurnTimer();
-
     // Check Winner
     const alive = gameState.players.filter(p => p.alive);
     if (alive.length === 1) {
@@ -121,12 +112,6 @@ function nextTurn() {
 
         document.getElementById('winner-name').innerText = `${winner.name} WINS!`;
         document.getElementById('game-end-message').innerText = `${winner.isAI ? 'The Bot' : 'The Player'} has won.`;
-
-        // Show Duration
-        const duration = Math.floor((Date.now() - gameState.startTime) / 1000);
-        const mins = Math.floor(duration / 60);
-        const secs = duration % 60;
-        document.getElementById('game-end-message').innerText += `\nMatch Time: ${mins}m ${secs}s`;
 
         document.getElementById('game-over-modal').classList.remove('hidden');
 

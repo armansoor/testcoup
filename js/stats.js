@@ -16,7 +16,6 @@ const ACHIEVEMENTS = [
     { id: 'foreign_aid_spammer', name: 'Foreign Aid Spammer', desc: 'Take Foreign Aid 5 times' },
     { id: 'coup_master', name: 'Coup Master', desc: 'Perform 3 Coups in one game' },
     { id: 'lucky_survivor', name: 'Lucky Survivor', desc: 'Win with only 1 card left' },
-    { id: 'speed_demon', name: 'Speed Demon', desc: 'Win in under 5 minutes' },
     { id: 'bot_slayer', name: 'Bot Slayer', desc: 'Defeat 3 AI bots in one game' },
     { id: 'hardcore_champ', name: 'Hardcore Champion', desc: 'Win a game on Hardcore difficulty' },
     { id: 'tax_evader', name: 'Tax Evader', desc: 'Successfully block Foreign Aid as Duke' },
@@ -24,13 +23,7 @@ const ACHIEVEMENTS = [
     { id: 'truth_teller', name: 'Truth Teller', desc: 'Win a challenge as the defender' },
     { id: 'lie_detector', name: 'Lie Detector', desc: 'Win a challenge as the challenger' },
     { id: 'double_agent', name: 'Double Agent', desc: 'Win with 2 of the same role (e.g. 2 Dukes)' },
-    { id: 'veteran', name: 'Veteran', desc: 'Play 50 games' },
-    // NEW TIME-BASED ACHIEVEMENTS
-    { id: 'blitz', name: 'Blitz', desc: 'Win a game in under 2 minutes' },
-    { id: 'marathon', name: 'Marathoner', desc: 'Play a game lasting over 15 minutes' },
-    { id: 'quick_thinker', name: 'Quick Thinker', desc: 'Win a game where every turn took < 5s (avg)' },
-    { id: 'endurance', name: 'Endurance', desc: 'Survive for 20 minutes in a match' },
-    { id: 'timeless', name: 'Timeless', desc: 'Win a game exactly on the minute mark (e.g. 3:00)' }
+    { id: 'veteran', name: 'Veteran', desc: 'Play 50 games' }
 ];
 
 let playerStats = {
@@ -83,7 +76,6 @@ function checkGameEndAchievements(winner) {
     playerStats.gamesPlayed++;
 
     const isWinner = winner.id === human.id;
-    const duration = Math.floor((Date.now() - gameState.startTime) / 1000);
 
     if (isWinner) {
         playerStats.gamesWon++;
@@ -103,13 +95,6 @@ function checkGameEndAchievements(winner) {
         // Check Roles
         const alive = human.cards.filter(c => !c.dead);
         if (alive.length === 2 && alive[0].role === alive[1].role) unlockAchievement('double_agent');
-
-        // TIME ACHIEVEMENTS
-        if (duration < 120) unlockAchievement('blitz');
-        if (duration > 900) unlockAchievement('marathon');
-        if (duration % 60 === 0) unlockAchievement('timeless');
-        // Quick Thinker/Endurance simplified logic for MVP
-        if (duration > 1200) unlockAchievement('endurance');
 
     } else {
         playerStats.streak = 0;

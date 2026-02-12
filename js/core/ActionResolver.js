@@ -65,7 +65,6 @@ function submitAction(actionType) {
 
 function handleActionSubmit(actionType, player, target = null) {
     setControls(false); // Lock UI
-    stopTurnTimer(); // Action committed
 
     gameState.currentAction = { type: actionType, player: player, target: target, challenge: null, block: null };
 
@@ -85,89 +84,97 @@ function handleActionSubmit(actionType, player, target = null) {
 }
 
 async function processReactions() {
-    const action = gameState.currentAction;
-    const actingP = action.player;
+    try {
+        const action = gameState.currentAction;
+        const actingP = action.player;
 
-    // 1. Check for Challenges (if action is challengeable)
-    if (ACTIONS[action.type].challengeable) {
-        // Ask all other players
-        for (let p of gameState.players) {
-            if (p.id === actingP.id || !p.alive) continue;
+        // 1. Check for Challenges (if action is challengeable)
+        if (ACTIONS[action.type].challengeable) {
+            // Ask all other players
+            for (let p of gameState.players) {
+                if (p.id === actingP.id || !p.alive) continue;
 
-            let wantsChallenge = false;
-            if (p.isAI) {
-                wantsChallenge = p.shouldChallenge(action);
-            } else {
-                wantsChallenge = await requestChallenge(p, action);
-            }
-
-            if (wantsChallenge) {
-                log(`${p.name} CHALLENGES ${actingP.name}!`, 'important');
-                const won = await resolveChallenge(actingP, p, ACTIONS[action.type].role);
-                if (won) {
-                     await resolveActionEffect();
+                let wantsChallenge = false;
+                if (p.isAI) {
+                    wantsChallenge = p.shouldChallenge(action);
                 } else {
-                     nextTurn();
+                    wantsChallenge = await requestChallenge(p, action);
                 }
-                return; // End action flow here based on outcome
-            }
-        }
-    }
 
-    // 2. Check for Blocks (if action is blockable)
-    if (ACTIONS[action.type].blockable) {
-        // Usually only the target can block, except Foreign Aid (anyone)
-        const potentialBlockers = (action.type === 'Foreign Aid')
-            ? gameState.players.filter(pl => pl.id !== actingP.id && pl.alive)
-            : (action.target ? [action.target] : []);
-
-        for (let p of potentialBlockers) {
-            let wantsBlock = false;
-            if (p.isAI) wantsBlock = p.shouldBlock(action);
-            else wantsBlock = await requestBlock(p, action);
-
-            if (wantsBlock) {
-                const blockerRole = ACTIONS[action.type].blockedBy[0]; // Simplification
-                log(`${p.name} BLOCKS with ${blockerRole}!`);
-
-                // Block can be challenged!
-                const challengeAction = { type: 'Block', player: p, role: blockerRole };
-                for (let challenger of gameState.players) {
-                    if (challenger.id === p.id || !challenger.alive) continue;
-
-                    let wantsChallenge = false;
-                    if (challenger.isAI) {
-                        wantsChallenge = challenger.shouldChallenge(challengeAction);
+                if (wantsChallenge) {
+                    log(`${p.name} CHALLENGES ${actingP.name}!`, 'important');
+                    const won = await resolveChallenge(actingP, p, ACTIONS[action.type].role);
+                    if (won) {
+                        await resolveActionEffect();
                     } else {
-                        wantsChallenge = await requestChallenge(challenger, challengeAction);
+                        nextTurn();
                     }
-
-                    if (wantsChallenge) {
-                        log(`${challenger.name} CHALLENGES Block!`, 'important');
-                        const won = await resolveChallenge(p, challenger, blockerRole);
-                        if (!won) {
-                            // Block failed, action proceeds
-                            await resolveActionEffect();
-                        } else {
-                            // Block succeeded
-                            log(`Action BLOCKED.`);
-                            broadcastState();
-                            nextTurn();
-                        }
-                        return;
-                    }
+                    return; // End action flow here based on outcome
                 }
-
-                log(`Action BLOCKED.`);
-                broadcastState();
-                nextTurn();
-                return;
             }
         }
-    }
 
-    // 3. If no Challenge/Block, Resolve Action
-    await resolveActionEffect();
+        // 2. Check for Blocks (if action is blockable)
+        if (ACTIONS[action.type].blockable) {
+            // Usually only the target can block, except Foreign Aid (anyone)
+            const potentialBlockers = (action.type === 'Foreign Aid')
+                ? gameState.players.filter(pl => pl.id !== actingP.id && pl.alive)
+                : (action.target ? [action.target] : []);
+
+            for (let p of potentialBlockers) {
+                let wantsBlock = false;
+                if (p.isAI) wantsBlock = p.shouldBlock(action);
+                else wantsBlock = await requestBlock(p, action);
+
+                if (wantsBlock) {
+                    const blockerRole = ACTIONS[action.type].blockedBy[0]; // Simplification
+                    log(`${p.name} BLOCKS with ${blockerRole}!`);
+
+                    // Block can be challenged!
+                    const challengeAction = { type: 'Block', player: p, role: blockerRole };
+                    for (let challenger of gameState.players) {
+                        if (challenger.id === p.id || !challenger.alive) continue;
+
+                        let wantsChallenge = false;
+                        if (challenger.isAI) {
+                            wantsChallenge = challenger.shouldChallenge(challengeAction);
+                        } else {
+                            wantsChallenge = await requestChallenge(challenger, challengeAction);
+                        }
+
+                        if (wantsChallenge) {
+                            log(`${challenger.name} CHALLENGES Block!`, 'important');
+                            const won = await resolveChallenge(p, challenger, blockerRole);
+                            if (!won) {
+                                // Block failed, action proceeds
+                                await resolveActionEffect();
+                            } else {
+                                // Block succeeded
+                                log(`Action BLOCKED.`);
+                                broadcastState();
+                                nextTurn();
+                            }
+                            return;
+                        }
+                    }
+
+                    log(`Action BLOCKED.`);
+                    broadcastState();
+                    nextTurn();
+                    return;
+                }
+            }
+        }
+
+        // 3. If no Challenge/Block, Resolve Action
+        await resolveActionEffect();
+
+    } catch (e) {
+        console.error("Critical Error in processReactions:", e);
+        log(`Game Error: ${e.message}`, 'important');
+        // Attempt recovery: Force next turn
+        nextTurn();
+    }
 }
 
 async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
@@ -293,25 +300,36 @@ async function resolveActionEffect() {
             log(`${p.name} exchanges cards...`);
 
             // Get current alive cards (Safe filter)
-            const currentAlive = p.cards.filter(c => c && !c.dead);
-            const currentDead = p.cards.filter(c => c && c.dead);
+            // Ensure we use the latest player object from state
+            const freshP = gameState.players.find(pl => pl.id === p.id) || p;
+            const currentAlive = freshP.cards.filter(c => c && !c.dead);
+            const currentDead = freshP.cards.filter(c => c && c.dead);
+
+            // Target Keep Count is simply the number of alive cards the player has.
+            // If for some reason it's 0 (bug), force at least 1 if player is supposedly alive?
+            // But if they have 0 alive cards, they shouldn't be playing.
+            let keepCount = currentAlive.length;
+            if (keepCount === 0 && freshP.alive) {
+                 console.warn("Exchange: Player has 0 alive cards but is marked alive. Defaulting to 1.");
+                 keepCount = 1;
+            }
 
             // Combine for selection (Alive + Drawn)
             // Filter out any undefined just in case
             const cardsToChoose = [...currentAlive, ...drawnCards].filter(c => c);
 
-            updateUI(); // Force UI update before showing selection modal
+            // Log for debugging
+            console.log(`Exchange: ${freshP.name} has ${currentAlive.length} alive, drew ${drawnCards.length}. Keep: ${keepCount}. Total choice: ${cardsToChoose.length}`);
 
-            // Target Keep Count is simply the number of alive cards the player has.
-            const keepCount = currentAlive.length;
+            updateUI(); // Force UI update before showing selection modal
 
             // Safety: If cardsToChoose has fewer cards than we need to keep (e.g. deck empty AND hand corrupted),
             // we just keep everything.
             if (cardsToChoose.length <= keepCount) {
                 // No choice needed/possible
-                p.cards = [...cardsToChoose, ...currentDead];
+                freshP.cards = [...cardsToChoose, ...currentDead];
             } else {
-                if(p.isAI) {
+                if(freshP.isAI) {
                     // AI Logic: Randomly keep 'keepCount' cards
                     shuffle(cardsToChoose);
 
@@ -323,12 +341,12 @@ async function resolveActionEffect() {
                     shuffle(gameState.deck);
 
                     // Update Player
-                    p.cards = [...kept, ...currentDead];
+                    freshP.cards = [...kept, ...currentDead];
                 } else {
                     // Human Logic (Local or Remote)
                     // cardsToChoose is safe (no undefined).
                     // We pass keepCount explicitly to avoid UI assuming deck size.
-                    let keptIds = await requestExchange(p, cardsToChoose, keepCount);
+                    let keptIds = await requestExchange(freshP, cardsToChoose, keepCount);
 
                     // Validate keptIds
                     if (!keptIds || !Array.isArray(keptIds)) {
@@ -348,7 +366,7 @@ async function resolveActionEffect() {
                     returned.forEach(c => { if(c) gameState.deck.push(c); });
                     shuffle(gameState.deck);
 
-                    p.cards = [...kept, ...currentDead];
+                    freshP.cards = [...kept, ...currentDead];
                 }
             }
 
