@@ -207,3 +207,104 @@ button.disabled-force { opacity: 0.3; pointer-events: none; }
         max-width: 400px;
     }
 }
+
+/* --- DESKTOP DASHBOARD LAYOUT --- */
+@media (min-width: 1024px) {
+    #game-screen {
+        display: grid;
+        grid-template-columns: 1fr 350px; /* Main Area | Sidebar */
+        grid-template-rows: auto 1fr; /* Top Row (Opponents+Header) | Bottom Row (Player+Log) */
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* Sidebar: Header + Log */
+    .game-header {
+        grid-column: 2;
+        grid-row: 1;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        gap: 10px;
+        padding: 20px;
+        background: #111;
+        border-left: 2px solid #333;
+        border-bottom: 2px solid #333;
+        height: 100%; /* Fill the grid cell */
+    }
+
+    #game-log {
+        grid-column: 2;
+        grid-row: 2;
+        border-left: 2px solid #333;
+        border-bottom: none;
+        background: #0d0d0d;
+        height: 100%; /* Fill remaining vertical space */
+    }
+
+    /* Main Area: Opponents + Player */
+    #opponents-container {
+        grid-column: 1;
+        grid-row: 1;
+        background: radial-gradient(circle at center, #222 0%, #1a1a1a 100%);
+        align-items: center; /* Center vertically in the top row */
+        padding: 20px;
+        border-bottom: none; /* Remove legacy border */
+        overflow-y: auto;
+    }
+
+    #player-area {
+        grid-column: 1;
+        grid-row: 2;
+        border-top: none; /* Remove legacy border */
+        display: flex;
+        flex-direction: column;
+        justify-content: center; /* Center content vertically */
+        padding: 30px;
+    }
+
+    /* Visual Polish for Desktop */
+    .opponent-card {
+        min-width: 140px; /* Larger opponent cards */
+        font-size: 1rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+
+    .card-back {
+        width: 40px;
+        height: 55px; /* Larger card backs */
+    }
+
+    .player-card {
+        width: 120px; /* Significantly larger player cards */
+        height: 165px;
+        font-size: 1.1rem;
+        box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    }
+
+    #active-player-name {
+        font-size: 2rem;
+        margin-bottom: 20px;
+    }
+
+    .coins-display {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+    }
+
+    /* Action Buttons Scaling */
+    .action-grid button {
+        font-size: 1.1rem;
+        padding: 15px;
+        flex: 1 1 140px;
+    }
+
+    /* Lobby tweaks */
+    .setup-box {
+        max-width: 600px; /* Wider lobby box */
+    }
+
+    h1 {
+        font-size: 5rem; /* Bigger Title */
+    }
+}
