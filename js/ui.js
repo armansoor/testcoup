@@ -420,7 +420,7 @@ function askContinue(message) {
     });
 }
 
-function askHumanExchange(player) {
+function askHumanExchange(player, cardsToChoose) {
     return new Promise(resolve => {
         const panel = document.getElementById('reaction-panel');
         const title = document.getElementById('reaction-title');
@@ -429,16 +429,14 @@ function askHumanExchange(player) {
         panel.classList.remove('hidden');
 
         // Logic: Keep same number of ALIVE cards.
-        const totalAlive = player.cards.filter(c => !c.dead).length;
-        const keepCount = totalAlive - 2;
+        // cardsToChoose contains (Original Alive + 2 Drawn).
+        // We must return 2 cards to the deck.
+        const keepCount = cardsToChoose.length - 2;
 
         title.innerText = `${player.name}, select ${keepCount} card(s) to KEEP:`;
         btns.innerHTML = '';
 
-        const aliveCards = [];
-        player.cards.forEach(c => {
-            if (!c.dead) aliveCards.push(c);
-        });
+        const availableCards = cardsToChoose;
 
         // Selected IDs (using card.id for robustness)
         const selectedIds = new Set();
@@ -457,8 +455,9 @@ function askHumanExchange(player) {
         cardContainer.style.gap = '10px';
         cardContainer.style.justifyContent = 'center';
         cardContainer.style.marginBottom = '10px';
+        cardContainer.style.flexWrap = 'wrap'; // Ensure responsiveness
 
-        aliveCards.forEach((card, idx) => {
+        availableCards.forEach((card, idx) => {
             const cDiv = document.createElement('div');
             cDiv.className = 'player-card';
             cDiv.innerText = card.role;

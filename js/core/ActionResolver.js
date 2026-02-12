@@ -269,43 +269,46 @@ async function resolveActionEffect() {
             await loseInfluence(t);
             break;
         case 'Exchange':
-            p.cards.push(gameState.deck.pop(), gameState.deck.pop());
+            // Draw 2 cards to a temporary array
+            const drawnCards = [gameState.deck.pop(), gameState.deck.pop()];
             log(`${p.name} exchanges cards...`);
-            broadcastState(); // Sync cards so client has 4
+
+            // Get current alive cards
+            const currentAlive = p.cards.filter(c => !c.dead);
+            const currentDead = p.cards.filter(c => c.dead);
+
+            // Combine for selection (Alive + Drawn)
+            const cardsToChoose = [...currentAlive, ...drawnCards];
 
             if(p.isAI) {
-                // Simplicity: AI keeps random, but only ALIVE cards
-                const alive = p.cards.filter(c => !c.dead);
-                const dead = p.cards.filter(c => c.dead);
+                // AI Logic: Randomly keep 'currentAlive.length' cards
+                shuffle(cardsToChoose);
 
-                shuffle(alive);
+                const keepCount = currentAlive.length;
+                const kept = cardsToChoose.slice(0, keepCount);
+                const returned = cardsToChoose.slice(keepCount);
 
-                // Return 2 cards to deck (we drew 2)
-                gameState.deck.push(alive.pop());
-                gameState.deck.push(alive.pop());
+                // Return unchosen to deck
+                returned.forEach(c => gameState.deck.push(c));
                 shuffle(gameState.deck);
 
-                p.cards = [...alive, ...dead];
+                // Update Player
+                p.cards = [...kept, ...currentDead];
             } else {
-                const keptIds = await requestExchange(p);
+                // Human Logic (Local or Remote)
+                const keptIds = await requestExchange(p, cardsToChoose);
 
-                // Deck Logic (Moved from askHumanExchange)
-                // Reconstruct logic based on IDs (More robust than indices)
-                const alive = [];
-                const dead = [];
-                p.cards.forEach(c => {
-                    if (c.dead) dead.push(c);
-                    else alive.push(c);
-                });
-
-                const kept = alive.filter(c => keptIds.includes(c.id));
-                const returned = alive.filter(c => !keptIds.includes(c.id));
+                const kept = cardsToChoose.filter(c => keptIds.includes(c.id));
+                const returned = cardsToChoose.filter(c => !keptIds.includes(c.id));
 
                 returned.forEach(c => gameState.deck.push(c));
                 shuffle(gameState.deck);
 
-                p.cards = [...kept, ...dead];
+                p.cards = [...kept, ...currentDead];
             }
+
+            updateUI();
+            broadcastState();
             break;
     }
     broadcastState();
