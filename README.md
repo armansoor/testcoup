@@ -11,11 +11,19 @@ A web-based implementation of the popular board game **Coup**, built with vanill
 -   **Online / LAN Multiplayer**: Host and join games over the internet or local network (Peer-to-Peer).
 -   **Spectator Mode**: Watch AI vs AI battles.
 
+## 📱 Install as App (PWA)
+
+This game is a Progressive Web App (PWA). You can install it on your device for a native-like experience (offline support, full-screen, home screen icon).
+
+-   **Desktop (Chrome/Edge)**: Click the install icon in the address bar.
+-   **Mobile (Android - Chrome)**: Tap the menu (⋮) > "Install App" or "Add to Home Screen".
+-   **Mobile (iOS - Safari)**: Tap the Share button > "Add to Home Screen".
+
 ## ✨ Features
 
 -   **5 Character Roles**: Duke, Assassin, Captain, Ambassador, Contessa.
 -   **Advanced AI**: Four difficulty levels ranging from Random to "God Mode" (Hardcore).
--   **Game Log**: Tracks all actions and events, downloadable as a text file.
+-   **Visual Replay System**: Watch a step-by-step replay of your matches to analyze strategies and bluffs. Also includes a downloadable text log.
 -   **Responsive Design**: Optimized for desktop and mobile play.
 
 ## 🌐 Online / LAN Multiplayer
