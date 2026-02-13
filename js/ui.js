@@ -523,3 +523,68 @@ function setupInstallButton() {
         installBtn.style.display = 'none';
     });
 }
+
+function setupGameOverUI(winnerName, isAI) {
+    document.getElementById('winner-name').innerText = `${winnerName} WINS!`;
+    document.getElementById('game-end-message').innerText = `${isAI ? 'The Bot' : 'The Player'} has won.`;
+
+    const actionContainer = document.getElementById('game-over-actions');
+    actionContainer.innerHTML = ''; // Clear previous buttons
+
+    // Common Buttons
+    const downloadBtn = document.createElement('button');
+    downloadBtn.innerText = 'Download Game Log';
+    downloadBtn.onclick = downloadLog;
+    actionContainer.appendChild(downloadBtn);
+
+    const historyBtn = document.createElement('button');
+    historyBtn.className = 'secondary';
+    historyBtn.innerText = 'View Match History';
+    historyBtn.onclick = showHistoryFromModal;
+    actionContainer.appendChild(historyBtn);
+
+    // Dynamic Context Buttons
+    if (isNetworkGame) {
+        if (netState.isHost) {
+            // Host Controls
+            const playAgainBtn = document.createElement('button');
+            playAgainBtn.className = 'secondary';
+            playAgainBtn.innerText = 'Play Again (Restart)';
+            playAgainBtn.onclick = () => {
+                document.getElementById('game-over-modal').classList.add('hidden');
+                startNetworkGame();
+            };
+            actionContainer.appendChild(playAgainBtn);
+
+            const disconnectBtn = document.createElement('button');
+            disconnectBtn.className = 'secondary red'; // Optional red styling
+            disconnectBtn.innerText = 'Disconnect';
+            disconnectBtn.onclick = () => location.reload();
+            actionContainer.appendChild(disconnectBtn);
+
+        } else {
+            // Client Controls
+            const waitingBtn = document.createElement('button');
+            waitingBtn.className = 'secondary';
+            waitingBtn.innerText = 'Waiting for Host...';
+            waitingBtn.disabled = true;
+            waitingBtn.style.opacity = '0.7';
+            actionContainer.appendChild(waitingBtn);
+
+            const disconnectBtn = document.createElement('button');
+            disconnectBtn.className = 'secondary red';
+            disconnectBtn.innerText = 'Disconnect';
+            disconnectBtn.onclick = () => location.reload();
+            actionContainer.appendChild(disconnectBtn);
+        }
+    } else {
+        // Local / Single Player
+        const playAgainBtn = document.createElement('button');
+        playAgainBtn.className = 'secondary';
+        playAgainBtn.innerText = 'Play Again';
+        playAgainBtn.onclick = () => location.reload();
+        actionContainer.appendChild(playAgainBtn);
+    }
+
+    document.getElementById('game-over-modal').classList.remove('hidden');
+}

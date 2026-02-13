@@ -141,7 +141,7 @@
             <div id="turn-indicator">Turn: Player 1</div>
             <button class="small-btn" onclick="if(window.audio) window.audio.toggleMute() ? this.innerText='Unmute' : this.innerText='Mute'">Mute</button>
             <button class="small-btn" onclick="toggleRules()">Rules</button>
-            <button id="quit-btn" class="small-btn red" onclick="location.reload()">Quit</button>
+            <button id="quit-btn" class="small-btn red" onclick="handleQuit()">Quit</button>
             <button id="exit-replay-btn" class="small-btn red hidden" onclick="exitReplay()">Exit Replay</button>
         </div>
 
@@ -206,9 +206,9 @@
         <div class="modal-content" style="text-align: center;">
             <h1 id="winner-name" style="color: gold; margin-bottom: 20px;">WINNER!</h1>
             <p id="game-end-message" style="margin-bottom: 20px;">The game has ended.</p>
-            <button onclick="downloadLog()" style="margin-bottom: 10px;">Download Game Log</button>
-            <button class="secondary" onclick="showHistoryFromModal()" style="margin-bottom: 10px;">View Match History</button>
-            <button class="secondary" onclick="location.reload()">Play Again</button>
+            <div id="game-over-actions" style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                <!-- Dynamic Buttons will be injected here -->
+            </div>
         </div>
     </div>
 

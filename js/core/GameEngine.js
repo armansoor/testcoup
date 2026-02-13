@@ -110,10 +110,7 @@ function nextTurn() {
             });
         }
 
-        document.getElementById('winner-name').innerText = `${winner.name} WINS!`;
-        document.getElementById('game-end-message').innerText = `${winner.isAI ? 'The Bot' : 'The Player'} has won.`;
-
-        document.getElementById('game-over-modal').classList.remove('hidden');
+        setupGameOverUI(winner.name, winner.isAI);
 
         saveMatchHistory(winner);
         return;
