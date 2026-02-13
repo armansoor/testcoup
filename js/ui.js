@@ -44,10 +44,10 @@ function updateUI() {
         let cardHtml = '';
         pl.cards.forEach(c => {
             if (!c) return;
-            if (c.dead) cardHtml += `<span class="card-back" style="background:red"></span>`;
+            if (c.dead) cardHtml += `<span class="card-back dead"></span>`;
             else {
                 if (isReplayMode) {
-                    cardHtml += `<span class="card-back" style="width:auto; min-width:30px; background:#ddd; color:#000; font-size:0.5rem; line-height:38px; overflow:hidden; vertical-align:middle;">${c.role.substr(0,3)}</span>`;
+                    cardHtml += `<span class="card-back replay-card" style="width:auto; min-width:30px; background:#ddd; color:#000; font-size:0.5rem; line-height:38px; overflow:hidden; vertical-align:middle;">${c.role.substr(0,3)}</span>`;
                 } else {
                     cardHtml += `<span class="card-back"></span>`;
                 }
@@ -102,7 +102,8 @@ function updateUI() {
         me.cards.forEach((c, idx) => {
             if (!c) return;
             const cDiv = document.createElement('div');
-            cDiv.className = `player-card ${c.dead ? 'dead' : ''}`;
+            const roleClass = c.role ? `role-${c.role.toLowerCase()}` : '';
+            cDiv.className = `player-card ${roleClass} ${c.dead ? 'dead' : ''}`;
             cDiv.innerText = c.role;
             cardBox.appendChild(cDiv);
         });
@@ -385,7 +386,8 @@ function askHumanToLoseCard(player) {
 
             const btn = document.createElement('button');
             btn.innerText = card.role;
-            btn.className = 'red';
+            const roleClass = card.role ? `role-${card.role.toLowerCase()}` : '';
+            btn.className = `red ${roleClass}`; // Append role class for optional styling
             btn.onclick = () => {
                 panel.classList.add('hidden');
                 resolve(idx);
@@ -459,7 +461,8 @@ function askHumanExchange(player, cardsToChoose, keepCount = 1) {
 
         availableCards.forEach((card, idx) => {
             const cDiv = document.createElement('div');
-            cDiv.className = 'player-card';
+            const roleClass = card.role ? `role-${card.role.toLowerCase()}` : '';
+            cDiv.className = `player-card ${roleClass}`;
             cDiv.innerText = card.role;
             cDiv.onclick = () => {
                 if (selectedIds.has(card.id)) {
