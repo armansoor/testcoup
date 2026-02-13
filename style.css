@@ -119,11 +119,12 @@ button.disabled-force { opacity: 0.3; pointer-events: none; }
     border-color: #9575CD;
 }
 .role-assassin {
-    background-color: #1a1a1a;
-    background-image: linear-gradient(135deg, #333333 0%, #000000 100%), url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27black%27%20opacity%3D%270.7%27%3E%3C%21--%20Dagger%20--%3E%3Cpath%20d%3D%27M20.71%205.63l-2.34-2.34c-.39-.39-1.02-.39-1.41%200l-3.12%203.12-1.93-1.91-1.41%201.41%201.42%201.42L3%2016.25V21h4.75l8.92-8.92%201.42%201.42%201.41-1.41-1.92-1.92%203.12-3.12c.4-.4.4-1.03.01-1.42zM5.25%2020l-.63-.63%201.13-1.13.71.71L5.25%2020z%27/%3E%3C/svg%3E");
+    background-color: #FFC107;
+    background-image: linear-gradient(135deg, #FFEB3B 0%, #FFA000 100%), url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27black%27%20opacity%3D%270.7%27%3E%3C%21--%20Dagger%20--%3E%3Cpath%20d%3D%27M20.71%205.63l-2.34-2.34c-.39-.39-1.02-.39-1.41%200l-3.12%203.12-1.93-1.91-1.41%201.41%201.42%201.42L3%2016.25V21h4.75l8.92-8.92%201.42%201.42%201.41-1.41-1.92-1.92%203.12-3.12c.4-.4.4-1.03.01-1.42zM5.25%2020l-.63-.63%201.13-1.13.71.71L5.25%2020z%27/%3E%3C/svg%3E");
     background-blend-mode: overlay, normal;
-    border-color: #b71c1c; /* Deep Red Border */
-    color: #ffebee;
+    border-color: #FF6F00; /* Darker Gold/Orange */
+    color: #000;
+    text-shadow: none;
 }
 .role-captain {
     background-color: #1565C0;
