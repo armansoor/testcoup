@@ -51,3 +51,13 @@ window.onbeforeunload = function() {
         return "Are you sure you want to leave the game?";
     }
 };
+
+function handleQuit() {
+    if (isNetworkGame) {
+        if (confirm("Disconnect from the game? This will return you to the main menu.")) {
+            location.reload();
+        }
+    } else {
+        location.reload();
+    }
+}

@@ -380,9 +380,7 @@ function handleJoinRequest(data, conn) {
 
 function handleGameOver(data) {
     // Ensure log is up to date (usually State Update comes before this, but safe to assume log is sync)
-    document.getElementById('winner-name').innerText = `${data.winnerName} WINS!`;
-    document.getElementById('game-end-message').innerText = `${data.isAI ? 'The Bot' : 'The Player'} has won.`;
-    document.getElementById('game-over-modal').classList.remove('hidden');
+    setupGameOverUI(data.winnerName, data.isAI);
 
     // Spectators don't save match history yet (or maybe they should?)
     if (myPlayerId !== -1) {
@@ -464,6 +462,9 @@ function broadcast(msg) {
 
 function startNetworkGame() {
     if (!netState.isHost) return;
+
+    // Reset UI for restart
+    document.getElementById('game-over-modal').classList.add('hidden');
 
     const aiCount = parseInt(document.getElementById('network-ai-count').value);
 
@@ -555,6 +556,7 @@ function startNetworkGame() {
 function setupClientGame(initialState) {
     document.getElementById('lobby-screen').classList.remove('active');
     document.getElementById('game-screen').classList.add('active');
+    document.getElementById('game-over-modal').classList.add('hidden');
 
     if (myPlayerId === -1) {
         // Spectator specific UI tweaks?
