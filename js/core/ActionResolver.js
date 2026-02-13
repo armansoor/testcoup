@@ -204,6 +204,7 @@ async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
             // Safety check for undefined
             if (newCard) {
                 claimedPlayer.cards[cardIdx] = newCard;
+                log(`${claimedPlayer.name} returns ${claimedRole} to deck and draws a replacement.`);
             } else {
                 // Critical Failure: Player has undefined card now.
                 log("Error: Deck returned undefined card.", "important");
@@ -212,6 +213,7 @@ async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
              // Deck Empty: Cannot draw. Player effectively loses the card?
              // Or they keep the old card?
              // Standard rules: "Cards are returned to the Court Deck, shuffled, and a replacement is drawn."
+             log(`${claimedPlayer.name} returns ${claimedRole} to deck.`);
         }
 
         updateUI(); // Ensure local UI reflects the swap immediately
