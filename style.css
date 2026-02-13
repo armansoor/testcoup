@@ -285,7 +285,8 @@ button.disabled-force { opacity: 0.3; pointer-events: none; }
     #action-panel {
         max-width: 800px;
         margin: 0 auto; /* Center the panel */
-        overflow: hidden; /* Safety clip */
+        overflow: visible; /* Allow buttons to show */
+        flex-shrink: 0; /* Prevent squashing */
     }
 
     .action-grid {
@@ -370,7 +371,9 @@ button.disabled-force { opacity: 0.3; pointer-events: none; }
         border-top: none; /* Remove legacy border */
         display: flex;
         flex-direction: column;
-        justify-content: center; /* Center content vertically */
+        justify-content: flex-start; /* Prevent top-clipping */
+        overflow-y: auto; /* Enable scrolling */
+        min-height: 0; /* Allow flex/grid item to shrink below content size */
         padding: 30px;
     }
 
