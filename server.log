@@ -1,18 +1,57 @@
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 1314, in <module>
-    test(
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 1261, in test
-    with ServerClass(addr, HandlerClass) as httpd:
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/socketserver.py", line 457, in __init__
-    self.server_bind()
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 1308, in server_bind
-    return super().server_bind()
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 136, in server_bind
-    socketserver.TCPServer.server_bind(self)
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/socketserver.py", line 478, in server_bind
-    self.socket.bind(self.server_address)
-OSError: [Errno 98] Address already in use
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /style_anim.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /style_pass.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /js/constants.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /js/core/GameEngine.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /js/network.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /js/state.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /js/stats.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /js/core/ReplayManager.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /js/core/ActionResolver.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /js/main.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:14] "GET /js/audio.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:15] "GET /sw.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:15] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 15:56:15] code 404, message File not found
+127.0.0.1 - - [14/Feb/2026 15:56:15] "GET /js/game.js HTTP/1.1" 404 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /style_pass.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /style_anim.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /js/constants.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /js/state.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /js/network.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /js/core/ReplayManager.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /js/audio.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /js/core/ActionResolver.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /js/core/GameEngine.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /js/stats.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:55] "GET /js/main.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:56] "GET /sw.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:56] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:02:56] code 404, message File not found
+127.0.0.1 - - [14/Feb/2026 16:02:56] "GET /js/game.js HTTP/1.1" 404 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /style_anim.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /style_pass.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /js/core/GameEngine.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /js/constants.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /js/network.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /js/state.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /js/core/ActionResolver.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /js/core/ReplayManager.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /js/stats.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /js/main.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /js/audio.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /sw.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 16:03:22] code 404, message File not found
+127.0.0.1 - - [14/Feb/2026 16:03:22] "GET /js/game.js HTTP/1.1" 404 -
