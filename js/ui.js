@@ -348,16 +348,23 @@ function askHumanBlock(player, actionObj) {
         const btns = document.getElementById('reaction-buttons');
 
         panel.classList.remove('hidden');
-        const blockerRoles = ACTIONS[actionObj.type].blockedBy.join(' or ');
-        title.innerText = `${player.name}, do you want to Block ${actionObj.type} (claims ${blockerRoles})?`;
+        const blockerRoles = ACTIONS[actionObj.type].blockedBy;
+        const blockerRolesStr = blockerRoles.join(' or ');
+        title.innerText = `${player.name}, do you want to Block ${actionObj.type} (claims ${blockerRolesStr})?`;
         btns.innerHTML = '';
 
-        const yesBtn = document.createElement('button');
-        yesBtn.innerText = 'Block!';
-        yesBtn.onclick = () => {
-            panel.classList.add('hidden');
-            resolve(true);
-        };
+        // Create a button for each possible blocking role
+        blockerRoles.forEach(role => {
+            const btn = document.createElement('button');
+            btn.innerText = `Block with ${role}`;
+            const roleClass = role ? `role-${role.toLowerCase()}` : '';
+            btn.className = roleClass;
+            btn.onclick = () => {
+                panel.classList.add('hidden');
+                resolve(role); // Resolve with the specific Role Name
+            };
+            btns.appendChild(btn);
+        });
 
         const noBtn = document.createElement('button');
         noBtn.innerText = 'Pass';
@@ -366,7 +373,6 @@ function askHumanBlock(player, actionObj) {
             resolve(false);
         };
 
-        btns.appendChild(yesBtn);
         btns.appendChild(noBtn);
     });
 }

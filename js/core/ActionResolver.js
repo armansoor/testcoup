@@ -127,7 +127,14 @@ async function processReactions() {
                 else wantsBlock = await requestBlock(p, action);
 
                 if (wantsBlock) {
-                    const blockerRole = ACTIONS[action.type].blockedBy[0]; // Simplification
+                    // Logic to support multiple blocker roles (Ambassador/Captain for Steal)
+                    // wantsBlock might be boolean (old behavior) or string (new behavior)
+                    let blockerRole = ACTIONS[action.type].blockedBy[0]; // Default fallback
+
+                    if (typeof wantsBlock === 'string' && ACTIONS[action.type].blockedBy.includes(wantsBlock)) {
+                        blockerRole = wantsBlock;
+                    }
+
                     log(`${p.name} BLOCKS with ${blockerRole}!`);
 
                     // Block can be challenged!

@@ -220,18 +220,30 @@ class Player {
         const blockerRoles = ACTIONS[actionObj.type].blockedBy;
         const hasBlocker = this.cards.some(c => c && blockerRoles.includes(c.role) && !c.dead);
 
-        if (hasBlocker) return true; // Always block if I really can
-
-        // Bluff block?
-        // Hardcore: Block almost always if targeted by assassination (to survive)
-        if (this.difficulty === 'hardcore') {
-            if (actionObj.type === 'Assassinate') return true; // Desperate block
-            if (actionObj.type === 'Steal' && Math.random() > 0.3) return true;
-            if (actionObj.type === 'Foreign Aid' && Math.random() > 0.5) return true;
+        if (hasBlocker) {
+            // Return the specific role I have
+            const validCard = this.cards.find(c => c && blockerRoles.includes(c.role) && !c.dead);
+            return validCard.role;
         }
 
-        if (this.difficulty === 'hard' && actionObj.type === 'Assassinate' && Math.random() > 0.2) return true;
-        if (this.difficulty === 'hard' && actionObj.type === 'Steal' && Math.random() > 0.5) return true;
+        // Bluff block?
+        let shouldBluff = false;
+
+        // Hardcore: Block almost always if targeted by assassination (to survive)
+        if (this.difficulty === 'hardcore') {
+            if (actionObj.type === 'Assassinate') shouldBluff = true; // Desperate block
+            if (actionObj.type === 'Steal' && Math.random() > 0.3) shouldBluff = true;
+            if (actionObj.type === 'Foreign Aid' && Math.random() > 0.5) shouldBluff = true;
+        }
+
+        if (this.difficulty === 'hard' && actionObj.type === 'Assassinate' && Math.random() > 0.2) shouldBluff = true;
+        if (this.difficulty === 'hard' && actionObj.type === 'Steal' && Math.random() > 0.5) shouldBluff = true;
+
+        if (shouldBluff) {
+            // Pick a random valid blocker role to claim
+            const randomRole = blockerRoles[Math.floor(Math.random() * blockerRoles.length)];
+            return randomRole;
+        }
 
         return false;
     }

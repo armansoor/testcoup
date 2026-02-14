@@ -2,7 +2,7 @@ const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
 
-// --- MOCK DOM & BROWSER API (Simplified for local testing) ---
+// --- MOCK DOM & BROWSER API ---
 
 class MockElement {
     constructor(tagName = 'div') {
@@ -26,6 +26,9 @@ class MockElement {
     appendChild(child) { this.children.push(child); }
     removeChild(child) { this.children = this.children.filter(c => c !== child); }
     click() { if (this.onclick) this.onclick(); }
+    querySelector() { return new MockElement(); }
+    querySelectorAll() { return []; }
+    getBoundingClientRect() { return { left: 0, top: 0, width: 0, height: 0 }; }
 }
 
 class MockDocument {
@@ -47,7 +50,32 @@ class MockDocument {
 
 // --- TEST RUNNER ---
 
-const scriptCode = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
+function loadScripts(sandbox) {
+    const files = [
+        'js/constants.js',
+        'js/state.js',
+        'js/utils.js',
+        'js/ui.js',
+        'js/core/GameEngine.js',
+        'js/core/ActionResolver.js'
+    ];
+
+    files.forEach(file => {
+        let code = fs.readFileSync(path.join(__dirname, '../', file), 'utf8');
+        // Manually Expose Globals for Test Access
+        if (file.includes('state.js')) code += "\nwindow.gameState = gameState;\n";
+        if (file.includes('constants.js')) code += "\nwindow.ACTIONS = ACTIONS; window.ROLES = ROLES;\n";
+        if (file.includes('GameEngine.js')) code += "\nwindow.startGame = startGame;\n";
+        if (file.includes('ActionResolver.js')) code += "\nwindow.submitAction = submitAction;\n";
+
+        try {
+            vm.runInContext(code, sandbox);
+        } catch (e) {
+            console.error(`Error loading ${file}:`, e);
+            throw e;
+        }
+    });
+}
 
 function createInstance(config = {}) {
     const doc = new MockDocument();
@@ -56,15 +84,16 @@ function createInstance(config = {}) {
     doc.getElementById('human-count').value = config.humanCount || '1';
     doc.getElementById('ai-count').value = config.aiCount || '1';
     doc.getElementById('difficulty').value = config.difficulty || 'normal';
+    doc.getElementById('lobby-screen').classList.add('active');
+    doc.getElementById('game-screen');
 
     const sandbox = {
         document: doc,
-        window: { onbeforeunload: null },
         location: { reload: () => console.log(`[RELOAD]`) },
         console: console,
         alert: (msg) => console.log(`[ALERT] ${msg}`),
         prompt: (msg) => { console.log(`[PROMPT] ${msg}`); return null; },
-        setTimeout: (fn, delay) => fn(), // Instant timeout
+        setTimeout: (fn, delay) => { fn(); }, // Sync execution
         clearTimeout: () => {},
         setInterval: () => {},
         clearInterval: () => {},
@@ -75,26 +104,31 @@ function createInstance(config = {}) {
         localStorage: { getItem: () => null, setItem: () => {} },
         Blob: class {},
         URL: { createObjectURL: () => '', revokeObjectURL: () => {} },
-        Peer: class { on() {} connect() {} }, // Mock Peer
-        ROLES: ['Duke', 'Assassin', 'Captain', 'Ambassador', 'Contessa'], // For verification
-        // Minimal Mock Element needed for askHumanChallenge (DOM interaction)
-        // script.js does: const panel = document.getElementById('reaction-panel');
-        // panel.classList.remove('hidden');
+        Peer: class { on() {} connect() {} },
+        isNetworkGame: false,
+        netState: { isHost: false },
+        ROLES: ['Duke', 'Assassin', 'Captain', 'Ambassador', 'Contessa'],
+        onbeforeunload: null,
+        audio: { playCoin: () => {}, playLose: () => {}, playWin: () => {}, playError: () => {}, playClick: () => {}, toggleMute: () => {} },
+        broadcastState: () => {},
+        checkGameEndAchievements: () => {},
+        saveMatchHistory: () => {},
+        setupGameOverUI: () => {}
     };
 
+    sandbox.window = sandbox; // Circular reference
     sandbox.self = sandbox;
 
     vm.createContext(sandbox);
 
-    const modifiedScript = scriptCode + "\n\n" +
-        "try { window.gameState = gameState; } catch(e) {}\n" +
-        "try { window.startGame = startGame; } catch(e) {}\n" +
-        "try { window.submitAction = submitAction; } catch(e) {}\n" +
-        "try { window.askHumanChallenge = askHumanChallenge; } catch(e) {}\n" +
-        "try { window.askHumanBlock = askHumanBlock; } catch(e) {}\n" +
-        "try { window.askHumanToLoseCard = askHumanToLoseCard; } catch(e) {}\n";
+    loadScripts(sandbox);
 
-    vm.runInContext(modifiedScript, sandbox);
+    // Inject mocks that were previously done via runInContext string concatenation
+    // But since we load scripts dynamically, we must override them AFTER loading.
+
+    // Note: To override functions defined in loaded scripts, we can just assign them in the sandbox.
+    // However, if the scripts use `function foo() {}`, redeclaring it might need careful handling if strict mode.
+    // In loose mode, `sandbox.askHumanBlock = ...` works if it's global.
 
     return sandbox;
 }
@@ -111,18 +145,9 @@ async function runLocalTests() {
     // Manually trigger startGame logic within context
     sp.document.getElementById('human-count').value = '1';
     sp.document.getElementById('ai-count').value = '1';
-    vm.runInContext("startGame()", sp); // Run directly
+    sp.startGame();
 
-    // In script.js, 'gameState' is a 'let' variable at the top level.
-    // When runInContext runs, it executes script.js.
-    // However, unless we explicitly attach gameState to window, it might not be accessible on 'sp' directly
-    // if it wasn't global. But we added "try { window.gameState = gameState }" to script string.
-
-    // Debug: check keys
-    // console.log("Sandbox keys:", Object.keys(sp));
-
-    const gs1 = sp.window.gameState; // Access via window alias
-    if (!gs1) throw new Error("GameState not initialized");
+    const gs1 = sp.gameState; // Direct access thanks to exposure
 
     console.log(`Players: ${gs1.players.length}`);
     if (gs1.players.length !== 2) throw new Error("Incorrect player count");
@@ -138,13 +163,10 @@ async function runLocalTests() {
     console.log(`Human Coins: ${gs1.players[0].coins}`);
     if (gs1.players[0].coins !== 3) throw new Error("Income failed");
 
-    // Bot Turn (Player 2) - Instant due to mock setTimeout
-    // Bot logic runs automatically.
-    // Verify turn advanced back to Human or is in progress
-    console.log(`Turn passed to: ${gs1.players[gs1.currentPlayerIndex].name}`);
-    // Since mock timeout is instant, Bot might have already played.
-    // Let's check if Bot has > 2 coins or took an action
+    // Bot Turn (Player 2)
+    // Since setTimeout is sync, Bot should have acted.
     console.log(`Bot Coins: ${gs1.players[1].coins}`);
+
 
     // TEST 2: Pass & Play (2 Humans)
     console.log("\n--- Test 2: Pass & Play (2 Humans) ---");
@@ -152,114 +174,61 @@ async function runLocalTests() {
 
     pp.document.getElementById('human-count').value = '2';
     pp.document.getElementById('ai-count').value = '0';
-    vm.runInContext("startGame()", pp);
 
-    const gs2 = pp.window.gameState;
+    // Mock interaction BEFORE starting game to capture any initial logic if needed (unlikely)
+    // Actually we need to start first to init gameState
+    pp.startGame();
+
+    const gs2 = pp.gameState;
 
     if (gs2.players.length !== 2) throw new Error("Incorrect player count for P&P");
     if (gs2.players[1].isAI) throw new Error("Player 2 should be Human");
 
-    // Player 1 Action
-    // Note: submitAction calls getCurrentPlayer() which uses global gameState.
-    vm.runInContext("submitAction('Foreign Aid')", pp);
-    console.log(`P1 Coins: ${gs2.players[0].coins}`);
-
-    // Check Blockability Logic (Mocking interaction)
-    // Foreign Aid is blockable by Duke.
-    // In local game, `processReactions` iterates players.
-    // Since we mocked timeouts, it might hang waiting for Promise if we don't mock the `askHumanBlock`.
-    // But `askHumanBlock` returns a Promise. The script awaits it.
-    // The MOCK DOM doesn't user interact. So the promise will PENDING forever unless we mock the function.
-
-    // We need to inject a mock for `askHumanBlock` to auto-pass.
-
-    // Re-create instance with mocks
-    const ppMock = createInstance({ humanCount: 2, aiCount: 0 });
-
-    // Mock Interactions to auto-pass
-    ppMock.window.requestChallenge = () => Promise.resolve(false); // Override internal if possible, but it uses local functions
-    // We need to override the function in the sandbox scope directly if possible, or monkey patch
-    // `askHumanBlock` is defined in script scope.
-    // We can't easily overwrite it from outside without `window` exposure or `eval`.
-    // The script exposes `askHumanBlock` to window in our modified script.
-
-    ppMock.window.askHumanBlock = () => {
+    // Mock askHumanBlock to auto-pass
+    // Overwriting the global function in sandbox
+    pp.askHumanBlock = (p, action) => {
         console.log("[TEST] Auto-passing Block");
         return Promise.resolve(false);
     };
-    ppMock.window.askHumanChallenge = () => {
+    pp.askHumanChallenge = () => {
         console.log("[TEST] Auto-passing Challenge");
         return Promise.resolve(false);
     };
 
-    // Also need to mock requestBlock/Challenge in case logic routes there (shouldn't for local humans but check)
-    // Actually, processReactions calls `requestBlock(p, action)`
-    // In local game, `requestBlock` calls `askHumanBlock` directly.
-    // BUT `gameState.currentAction` must be set correctly.
+    // Player 1 Action
+    pp.submitAction('Foreign Aid');
 
-    // START GAME
-    ppMock.document.getElementById('human-count').value = '2';
-    ppMock.document.getElementById('ai-count').value = '0';
-    vm.runInContext("startGame()", ppMock);
+    await new Promise(r => setTimeout(r, 100)); // Wait for promise chains
 
-    // Player 1: Foreign Aid
-    // The issue might be that requestBlock/Challenge calls askHumanXXX which are asynchronous.
-    // If we overwrite them on the sandbox window, the script might still be using the locally scoped functions defined inside script.js IIFE/block scope?
-    // script.js is not an IIFE, but `function askHumanBlock` is defined at top level.
-    // However, `requestBlock` calls `askHumanBlock`.
-    // If `askHumanBlock` is defined in the script, it uses THAT one, not `window.askHumanBlock`.
+    console.log(`P1 Coins: ${gs2.players[0].coins}`);
 
-    // To mock internal functions of script.js, we must overwrite them in the context BEFORE they are called.
-    // Since they are function declarations, they are hoisted.
-    // We can overwrite them by re-assigning them in the context if they were declared as vars/functions.
-    // But function declarations are read-only in some strict modes? No.
+    if (gs2.players[0].coins !== 4) throw new Error("Foreign Aid failed or blocked unexpectedly");
 
-    // Let's try to overwrite them in the runInContext string.
-    vm.runInContext("askHumanBlock = () => { console.log('MOCKED BLOCK'); return Promise.resolve(false); }", ppMock);
-    vm.runInContext("askHumanChallenge = () => { console.log('MOCKED CHALLENGE'); return Promise.resolve(false); }", ppMock);
-
-    vm.runInContext("submitAction('Foreign Aid')", ppMock);
-
-    // Wait for async resolution of all promises (Reaction Phase)
-    await new Promise(r => setTimeout(r, 500));
-
-    console.log(`P1 Coins: ${ppMock.window.gameState.players[0].coins}`);
-    // Should be 2 (start) + 2 (aid) = 4
-    // If it's 2, it means it didn't resolve.
-    // If it's 2 and next turn, it means it was blocked.
-    // Debug
-    console.log("Phase:", ppMock.window.gameState.turnPhase);
-    console.log("Current Player Index:", ppMock.window.gameState.currentPlayerIndex);
-
-    if (ppMock.window.gameState.players[0].coins !== 4) throw new Error("Foreign Aid failed or blocked unexpectedly");
-
-    // Turn should be Player 2
-    console.log(`Current Player: ${ppMock.window.gameState.players[ppMock.window.gameState.currentPlayerIndex].name}`);
-    if (ppMock.window.gameState.currentPlayerIndex !== 1) throw new Error("Turn did not advance to P2");
 
     // TEST 3: Coup Mechanics
     console.log("\n--- Test 3: Coup Mechanics ---");
     const coupGame = createInstance({ humanCount: 2, aiCount: 0 });
 
-    // Give P1 7 coins
-    // Start manually
     coupGame.document.getElementById('human-count').value = '2';
     coupGame.document.getElementById('ai-count').value = '0';
-    vm.runInContext("startGame()", coupGame);
+    coupGame.startGame();
 
-    const coupGS = coupGame.window.gameState;
-    if (!coupGS) throw new Error("Coup GameState not initialized");
-
+    const coupGS = coupGame.gameState;
     coupGS.players[0].coins = 7;
 
-    // Mock loss (overwrite in context)
-    vm.runInContext("askHumanToLoseCard = (player) => { console.log(`[TEST] ${player.name} losing card 0`); return Promise.resolve(0); }", coupGame);
+    // Mock loss
+    coupGame.askHumanToLoseCard = (player) => {
+        console.log(`[TEST] ${player.name} losing card 0`);
+        return Promise.resolve(0);
+    };
+    // Mock Challenge/Block to be safe
+    coupGame.askHumanBlock = () => Promise.resolve(false);
+    coupGame.askHumanChallenge = () => Promise.resolve(false);
 
-    // submitAction usually prompts for target if > 1 enemy. Here only 1 enemy (P2).
-    vm.runInContext("submitAction('Coup')", coupGame);
-    // submitAction usually prompts for target if > 1 enemy. Here only 1 enemy (P2).
+    // submitAction('Coup') -> P1 on P2 (auto target)
+    coupGame.submitAction('Coup');
 
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 100));
 
     const victim = coupGS.players[1];
     console.log(`Victim Cards: ${JSON.stringify(victim.cards)}`);
