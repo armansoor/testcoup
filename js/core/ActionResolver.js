@@ -139,6 +139,8 @@ async function processReactions() {
 
                     // Block can be challenged!
                     const challengeAction = { type: 'Block', player: p, role: blockerRole };
+                    await sleep(1000);
+
                     for (let challenger of gameState.players) {
                         if (challenger.id === p.id || !challenger.alive) continue;
 

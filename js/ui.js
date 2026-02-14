@@ -318,7 +318,17 @@ function askHumanChallenge(player, actionObj) {
         const btns = document.getElementById('reaction-buttons');
 
         panel.classList.remove('hidden');
-        title.innerText = `${player.name}, do you want to Challenge ${actionObj.player.name}'s ${actionObj.type}?`;
+
+        let roleName = actionObj.role;
+        if (!roleName && ACTIONS[actionObj.type]) {
+            roleName = ACTIONS[actionObj.type].role;
+        }
+
+        let msg = `${player.name}, do you want to Challenge ${actionObj.player.name}'s ${actionObj.type}`;
+        if (roleName) msg += ` (claims ${roleName})`;
+        msg += `?`;
+
+        title.innerText = msg;
         btns.innerHTML = '';
 
         const yesBtn = document.createElement('button');
