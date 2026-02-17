@@ -173,6 +173,15 @@ button.disabled-force { opacity: 0.3; pointer-events: none; }
     box-shadow: 0 0 15px gold;
 }
 
+/* ADDED: Game Footer */
+.game-footer {
+    color: #888;
+    font-size: 0.8rem;
+    margin-top: 20px;
+    text-align: center;
+    width: 100%;
+}
+
 /* ADDED: Mode Selector Styles */
 .mode-selector {
     display: flex;
