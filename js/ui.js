@@ -54,11 +54,20 @@ function updateUI() {
             }
         });
 
-        div.innerHTML = `
-            <div><strong>${pl.name}</strong></div>
-            <div>${pl.coins} Coins</div>
-            <div>${cardHtml}</div>
-        `;
+        // SECURITY FIX: Prevent XSS via player name
+        const nameDiv = document.createElement('div');
+        const strong = document.createElement('strong');
+        strong.innerText = pl.name;
+        nameDiv.appendChild(strong);
+        div.appendChild(nameDiv);
+
+        const coinsDiv = document.createElement('div');
+        coinsDiv.innerText = `${pl.coins} Coins`;
+        div.appendChild(coinsDiv);
+
+        const cardsDiv = document.createElement('div');
+        cardsDiv.innerHTML = cardHtml; // Safe: cardHtml constructed from trusted ROLES
+        div.appendChild(cardsDiv);
         oppContainer.appendChild(div);
     });
 
@@ -273,12 +282,32 @@ function showHistory() {
 
         const date = new Date(entry.date).toLocaleString();
 
-        div.innerHTML = `
-            <div style="font-weight:bold; color:#4caf50;">Winner: ${entry.winner}</div>
-            <div style="font-size:0.8rem; color:#aaa;">${date}</div>
-            <div style="font-size:0.8rem;">Players: ${entry.players.join(', ')}</div>
-            <button class="small-btn" onclick="loadReplay(${idx})" style="margin-top:5px; background:#2196F3; width: auto;">Watch Replay</button>
-        `;
+        // SECURITY FIX: Prevent XSS via history data
+        const winnerDiv = document.createElement('div');
+        winnerDiv.style.fontWeight = 'bold';
+        winnerDiv.style.color = '#4caf50';
+        winnerDiv.innerText = `Winner: ${entry.winner}`;
+        div.appendChild(winnerDiv);
+
+        const dateDiv = document.createElement('div');
+        dateDiv.style.fontSize = '0.8rem';
+        dateDiv.style.color = '#aaa';
+        dateDiv.innerText = date;
+        div.appendChild(dateDiv);
+
+        const playersDiv = document.createElement('div');
+        playersDiv.style.fontSize = '0.8rem';
+        playersDiv.innerText = `Players: ${entry.players.join(', ')}`;
+        div.appendChild(playersDiv);
+
+        const replayBtn = document.createElement('button');
+        replayBtn.className = 'small-btn';
+        replayBtn.style.marginTop = '5px';
+        replayBtn.style.background = '#2196F3';
+        replayBtn.style.width = 'auto';
+        replayBtn.innerText = 'Watch Replay';
+        replayBtn.onclick = () => loadReplay(idx);
+        div.appendChild(replayBtn);
         list.appendChild(div);
     });
 }
