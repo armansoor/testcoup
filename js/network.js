@@ -690,7 +690,7 @@ function captureReplaySnapshot() {
 
 function sendInteractionRequest(player, type, args) {
     return new Promise(resolve => {
-        const reqId = Date.now() + Math.random().toString();
+        const reqId = generateSecureId();
         netState.pendingRequests[reqId] = resolve;
 
         const client = netState.clients.find(c => c.id === player.peerId);
