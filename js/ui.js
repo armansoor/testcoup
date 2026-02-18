@@ -273,10 +273,13 @@ function showHistory() {
 
         const date = new Date(entry.date).toLocaleString();
 
+        const safeWinner = sanitize(entry.winner);
+        const safePlayers = entry.players.map(p => sanitize(p)).join(', ');
+
         div.innerHTML = `
-            <div style="font-weight:bold; color:#4caf50;">Winner: ${entry.winner}</div>
+            <div style="font-weight:bold; color:#4caf50;">Winner: ${safeWinner}</div>
             <div style="font-size:0.8rem; color:#aaa;">${date}</div>
-            <div style="font-size:0.8rem;">Players: ${entry.players.join(', ')}</div>
+            <div style="font-size:0.8rem;">Players: ${safePlayers}</div>
             <button class="small-btn" onclick="loadReplay(${idx})" style="margin-top:5px; background:#2196F3; width: auto;">Watch Replay</button>
         `;
         list.appendChild(div);
