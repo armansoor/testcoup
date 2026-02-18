@@ -8,6 +8,8 @@ function updateUI() {
     // Opponents
     const oppContainer = document.getElementById('opponents-container');
     oppContainer.innerHTML = '';
+    // Use DocumentFragment to batch DOM updates and minimize reflows
+    const oppFragment = document.createDocumentFragment();
     gameState.players.forEach(pl => {
         // Filter out the player shown in the main area
         let shouldHide = false;
@@ -59,8 +61,9 @@ function updateUI() {
             <div>${pl.coins} Coins</div>
             <div>${cardHtml}</div>
         `;
-        oppContainer.appendChild(div);
+        oppFragment.appendChild(div);
     });
+    oppContainer.appendChild(oppFragment);
 
     // Player Area
     const playerArea = document.getElementById('player-area');
@@ -99,14 +102,17 @@ function updateUI() {
 
         const cardBox = document.getElementById('player-cards');
         cardBox.innerHTML = '';
+        // Batch card updates
+        const cardFragment = document.createDocumentFragment();
         me.cards.forEach((c, idx) => {
             if (!c) return;
             const cDiv = document.createElement('div');
             const roleClass = c.role ? `role-${c.role.toLowerCase()}` : '';
             cDiv.className = `player-card ${roleClass} ${c.dead ? 'dead' : ''}`;
             cDiv.innerText = c.role;
-            cardBox.appendChild(cDiv);
+            cardFragment.appendChild(cDiv);
         });
+        cardBox.appendChild(cardFragment);
     } else {
          // Watching bots only or Spectator
          if (myPlayerId === -1) {

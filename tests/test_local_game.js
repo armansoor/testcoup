@@ -23,7 +23,14 @@ class MockElement {
         this.disabled = false;
         this.id = '';
     }
-    appendChild(child) { this.children.push(child); }
+    appendChild(child) {
+        if (child.tagName === 'DOCUMENT_FRAGMENT') {
+            this.children.push(...child.children);
+            child.children = [];
+        } else {
+            this.children.push(child);
+        }
+    }
     removeChild(child) { this.children = this.children.filter(c => c !== child); }
     click() { if (this.onclick) this.onclick(); }
     querySelector() { return new MockElement(); }
@@ -44,6 +51,7 @@ class MockDocument {
         return this.elements[id];
     }
     createElement(tag) { return new MockElement(tag); }
+    createDocumentFragment() { return new MockElement('DOCUMENT_FRAGMENT'); }
     querySelector(sel) { return new MockElement('DIV'); }
     querySelectorAll(sel) { return []; }
 }
