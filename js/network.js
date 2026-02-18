@@ -375,32 +375,41 @@ function scanPublicSlotBlock(startIndex) {
         }
     }, 1500); // 1.5s per block hard limit
 
-    for (let i = startIndex; i <= endIndex; i++) {
-        const hostId = `coup_public_${i}`;
-        const conn = netState.peer.connect(hostId, { reliable: true });
-        netState.activeScanConnections.push(conn);
+    try {
+        for (let i = startIndex; i <= endIndex; i++) {
+            const hostId = `coup_public_${i}`;
+            const conn = netState.peer.connect(hostId, { reliable: true });
+            netState.activeScanConnections.push(conn);
 
-        // Success Handler
-        conn.on('open', () => {
-            if (!netState.isScanning) return; // Already joined another?
+            // Success Handler
+            conn.on('open', () => {
+                if (!netState.isScanning) return; // Already joined another?
 
-            // WINNER!
-            netState.isScanning = false;
-            if (netState.blockScanTimeout) clearTimeout(netState.blockScanTimeout);
+                // WINNER!
+                netState.isScanning = false;
+                if (netState.blockScanTimeout) clearTimeout(netState.blockScanTimeout);
 
-            // Cleanup losers
-            cleanupBlockScan(conn);
+                // Cleanup losers
+                cleanupBlockScan(conn);
 
-            // Proceed to Join
-            netState.hostConn = conn;
-            document.getElementById('connection-status').innerText = `Found Room ${i}! Joining...`;
-            const name = document.getElementById('my-player-name').value.trim();
-            conn.send({ type: 'JOIN', name: name, isSpectator: false });
-        });
+                // Proceed to Join
+                netState.hostConn = conn;
+                document.getElementById('connection-status').innerText = `Found Room ${i}! Joining...`;
+                const name = document.getElementById('my-player-name').value.trim();
+                conn.send({ type: 'JOIN', name: name, isSpectator: false });
+            });
 
-        conn.on('data', (data) => handleNetworkData(data, conn));
+            conn.on('data', (data) => handleNetworkData(data, conn));
 
-        conn.on('error', () => { conn.close(); });
+            conn.on('error', () => { conn.close(); });
+        }
+    } catch (e) {
+        console.error("Scan Block Error:", e);
+        // If critical error (e.g. peer disconnected), try to recover or continue
+        if (netState.peer.disconnected) {
+            console.log("Peer disconnected, attempting reconnect...");
+            netState.peer.reconnect();
+        }
     }
 }
 
