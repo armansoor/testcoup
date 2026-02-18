@@ -14,6 +14,8 @@ let currentReplayIndex = 0;
 
 var turnTimer = null;
 var TURN_LIMIT_SECONDS = 180;
+var REACTION_LIMIT_SECONDS = 45;
+var reactionTimer = null;
 var lastWinnerName = null;
 
 // --- CORE CLASSES ---

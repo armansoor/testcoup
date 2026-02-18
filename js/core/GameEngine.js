@@ -305,3 +305,38 @@ function handleTurnTimeout() {
     // Force 'Income'
     handleActionSubmit('Income', p, null);
 }
+
+// --- REACTION TIMER (CHALLENGE/BLOCK) ---
+function startReactionTimer(timeoutCallback) {
+    clearReactionTimer();
+
+    const titleEl = document.getElementById('reaction-title');
+    if (!titleEl) return;
+
+    let timeLeft = REACTION_LIMIT_SECONDS;
+    const originalText = titleEl.innerText;
+    titleEl.innerText = `${originalText} (${timeLeft}s)`;
+
+    reactionTimer = setInterval(() => {
+        timeLeft--;
+        // Update Title with countdown
+        // We assume the text hasn't changed drastically, just append time
+        // Actually, safer to rebuild or just update the (XXs) part?
+        // Let's just append/replace the last parens
+        const currentText = titleEl.innerText;
+        const baseText = currentText.replace(/\(\d+s\)$/, '').trim();
+        titleEl.innerText = `${baseText} (${timeLeft}s)`;
+
+        if (timeLeft <= 0) {
+            clearReactionTimer();
+            if (timeoutCallback) timeoutCallback();
+        }
+    }, 1000);
+}
+
+function clearReactionTimer() {
+    if (reactionTimer) {
+        clearInterval(reactionTimer);
+        reactionTimer = null;
+    }
+}

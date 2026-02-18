@@ -44,3 +44,41 @@
 127.0.0.1 - - [18/Feb/2026 11:41:27] "GET /sw.js HTTP/1.1" 304 -
 127.0.0.1 - - [18/Feb/2026 11:41:27] code 404, message File not found
 127.0.0.1 - - [18/Feb/2026 11:41:27] "GET /js/game.js HTTP/1.1" 404 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /style_anim.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /style_pass.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /js/core/GameEngine.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /js/constants.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /js/network.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /js/state.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /js/core/ActionResolver.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /js/core/ReplayManager.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /js/audio.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /js/stats.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /js/main.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /sw.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:11] code 404, message File not found
+127.0.0.1 - - [18/Feb/2026 13:06:11] "GET /js/game.js HTTP/1.1" 404 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /style_anim.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /style_pass.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /js/state.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /js/constants.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /js/network.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /js/core/ActionResolver.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /js/core/GameEngine.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /js/core/ReplayManager.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /js/audio.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /js/main.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:45] "GET /js/stats.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:46] "GET /sw.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:46] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [18/Feb/2026 13:06:46] code 404, message File not found
+127.0.0.1 - - [18/Feb/2026 13:06:46] "GET /js/game.js HTTP/1.1" 404 -
