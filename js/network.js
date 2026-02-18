@@ -20,8 +20,14 @@ let netState = {
     clients: [], // Host's list of { id, conn, name, status, isSpectator }
     isHost: false,
     pendingRequests: {}, // Map of request ID to resolve function
-    reconnectTimers: {} // Map of peerId -> timeoutId
+    reconnectTimers: {}, // Map of peerId -> timeoutId
+    pendingClients: [], // For approval queue
+    requiresApproval: false,
+    isScanning: false,
+    currentScanIndex: 1
 };
+
+const PUBLIC_ROOM_LIMIT = 20;
 
 // --- HOST LOGIC ---
 function initHost() {
@@ -40,25 +46,89 @@ function initHost() {
         return;
     }
 
-    // CUSTOM ROOM NAME
-    let roomId = prompt("Enter a Custom Room Name (Optional, leave blank for auto-generated):");
-    if (roomId) {
-        roomId = roomId.trim().replace(/[^a-zA-Z0-9_-]/g, ''); // Sanitize
-        if (roomId.length < 3) {
-            alert("Custom Room Name too short. Using auto-generated ID.");
-            roomId = null;
+    const allowRandom = document.getElementById('allow-random-join').checked;
+    let roomId = null;
+
+    if (!allowRandom) {
+        // CUSTOM ROOM NAME
+        roomId = prompt("Enter a Custom Room Name (Optional, leave blank for auto-generated):");
+        if (roomId) {
+            roomId = roomId.trim().replace(/[^a-zA-Z0-9_-]/g, ''); // Sanitize
+            if (roomId.length < 3) {
+                alert("Custom Room Name too short. Using auto-generated ID.");
+                roomId = null;
+            }
         }
+        startHostPeer(roomId, false);
+    } else {
+        // Try to grab a public slot
+        document.getElementById('online-actions').classList.add('hidden');
+        document.getElementById('lobby-status').classList.remove('hidden');
+        document.getElementById('connection-status').innerText = "Reserving Public Slot...";
+
+        tryReservePublicSlot(1);
+    }
+}
+
+function tryReservePublicSlot(index) {
+    if (index > PUBLIC_ROOM_LIMIT) {
+        alert("All Public Slots are full! Creating a private room instead.");
+        startHostPeer(null, true); // Fallback to random ID, but still require approval?
+                                   // Actually if it's private ID, random join won't find it.
+                                   // So disable approval.
+        netState.requiresApproval = false;
+        return;
     }
 
+    const id = `coup_public_${index}`;
+    const tempPeer = new Peer(id, PEER_CONFIG);
+
+    tempPeer.on('error', (err) => {
+        if (err.type === 'unavailable-id') {
+            tempPeer.destroy();
+            tryReservePublicSlot(index + 1);
+        } else {
+            console.error("Public Slot Error:", err);
+            alert("Network Error: " + err.type);
+            tempPeer.destroy();
+        }
+    });
+
+    tempPeer.on('open', (id) => {
+        // Success! We have this slot.
+        // We can't easily transfer this socket, but we can just use this peer instance.
+        // But my architecture expects `startHostPeer` to create the peer usually.
+        // Let's refactor slightly to accept an existing peer or create one.
+        // Or simpler: destroy temp and immediately recreate? No, race condition.
+        // Use this peer.
+        setupHostPeerEvents(tempPeer, true);
+    });
+}
+
+function startHostPeer(customId, requireApproval) {
     isNetworkGame = true;
     netState.isHost = true;
+    netState.requiresApproval = requireApproval;
 
     document.getElementById('online-actions').classList.add('hidden');
     document.getElementById('lobby-status').classList.remove('hidden');
     document.getElementById('host-room-info').classList.remove('hidden');
     document.getElementById('connection-status').innerText = "Initializing Network...";
 
-    netState.peer = new Peer(roomId, PEER_CONFIG); // Use custom ID if provided
+    const peer = new Peer(customId, PEER_CONFIG);
+    setupHostPeerEvents(peer, requireApproval);
+}
+
+function setupHostPeerEvents(peer, requireApproval) {
+    netState.peer = peer;
+    netState.isHost = true;
+    netState.requiresApproval = requireApproval;
+    isNetworkGame = true;
+
+    // Ensure UI is ready
+    document.getElementById('online-actions').classList.add('hidden');
+    document.getElementById('lobby-status').classList.remove('hidden');
+    document.getElementById('host-room-info').classList.remove('hidden');
 
     netState.peer.on('error', (err) => {
         console.error("PeerJS Error:", err);
@@ -66,14 +136,7 @@ function initHost() {
         if (statusEl) {
             let msg = `Error: ${err.type}`;
             if (err.type === 'peer-unavailable') msg += " (Host ID not found or offline)";
-            if (err.type === 'network') msg += " (Check your internet connection)";
-            if (err.type === 'browser-incompatible') msg += " (Browser not supported)";
-            if (err.type === 'disconnected') msg += " (Lost connection to signaling server)";
-            if (err.type === 'invalid-id') msg += " (Invalid ID format)";
-            if (err.type === 'socket-error') msg += " (Socket connection failed)";
-            if (err.type === 'socket-closed') msg += " (Socket closed unexpectedly)";
             if (err.type === 'unavailable-id') msg += " (ID already taken)";
-            if (err.type === 'webrtc') msg += " (WebRTC Native Error)";
 
             statusEl.innerText = msg;
             statusEl.style.color = 'red';
@@ -85,7 +148,10 @@ function initHost() {
         document.getElementById('my-room-code').innerText = id;
         document.getElementById('connection-status').innerText = "Waiting for players...";
         document.getElementById('network-start-btn').classList.remove('hidden');
-        updateLobbyList(); // Show self immediately
+        if (requireApproval) {
+            document.getElementById('pending-players-section').classList.remove('hidden');
+        }
+        updateLobbyList();
     });
 
     netState.peer.on('connection', (conn) => {
@@ -235,6 +301,103 @@ function joinGame(isSpectator = false) {
     });
 }
 
+function findPublicGame() {
+    if (!navigator.onLine) {
+        alert("Internet connection required for Online Multiplayer.");
+        return;
+    }
+
+    const name = document.getElementById('my-player-name').value.trim();
+    if (name.length < 3 || name.length > 20) {
+        alert("Name must be between 3 and 20 characters!");
+        return;
+    }
+    if (name.includes(' ')) {
+        alert("Name cannot contain spaces!");
+        return;
+    }
+
+    isNetworkGame = true;
+    netState.isHost = false;
+    netState.isScanning = true;
+
+    document.getElementById('online-actions').classList.add('hidden');
+    document.getElementById('lobby-status').classList.remove('hidden');
+    document.getElementById('connection-status').innerText = "Initializing Scanner...";
+    document.getElementById('connected-players-list').innerHTML = '';
+
+    netState.peer = new Peer(null, PEER_CONFIG);
+
+    netState.peer.on('error', (err) => {
+        // Handle scanning errors gracefully
+        console.error("PeerJS Error:", err);
+    });
+
+    netState.peer.on('open', (id) => {
+        scanPublicSlots(1);
+    });
+}
+
+function scanPublicSlots(index) {
+    if (!netState.isScanning) return;
+    netState.currentScanIndex = index;
+
+    if (index > PUBLIC_ROOM_LIMIT) {
+        alert("No public games found. Try creating one!");
+        location.reload();
+        return;
+    }
+
+    document.getElementById('connection-status').innerText = `Scanning Room ${index}/${PUBLIC_ROOM_LIMIT}...`;
+    const hostId = `coup_public_${index}`;
+
+    // Attempt Connect
+    const conn = netState.peer.connect(hostId, {
+        reliable: true
+    });
+
+    let connected = false;
+
+    // Timeout for this slot
+    const timer = setTimeout(() => {
+        if (!connected) {
+            conn.close(); // Cancel this attempt
+            // Move next
+            scanPublicSlots(index + 1);
+        }
+    }, 800); // 0.8s timeout
+
+    conn.on('open', () => {
+        connected = true;
+        clearTimeout(timer);
+
+        // Success! We found a host.
+        // Proceed to join logic
+        netState.hostConn = conn;
+        document.getElementById('connection-status').innerText = "Found Room! Joining...";
+
+        const name = document.getElementById('my-player-name').value.trim();
+        conn.send({ type: 'JOIN', name: name, isSpectator: false });
+    });
+
+    conn.on('data', (data) => handleNetworkData(data, conn));
+
+    conn.on('close', () => {
+        // If connection closes while we are scanning (e.g. host rejected immediately via close?)
+        if (netState.isScanning && netState.hostConn === conn) {
+            // Check if we were actually rejected via message first
+            // If not, it might be a network drop or host full close
+            // We can try next?
+            // Safer to just let user know or retry?
+            // For now, let's rely on explicit REJECT message handling.
+        }
+    });
+
+    conn.on('error', (err) => {
+        // Usually handled by timeout
+    });
+}
+
 function handleNetworkData(data, conn) {
     // console.log("Received:", data);
 
@@ -286,8 +449,31 @@ function handleNetworkData(data, conn) {
                 handleGameOver(data);
                 break;
             case 'JOIN_ERROR':
-                alert(data.message);
-                location.reload();
+                if (netState.isScanning) {
+                     // Try next slot
+                     scanPublicSlots(netState.currentScanIndex + 1);
+                } else {
+                    alert(data.message);
+                    location.reload();
+                }
+                break;
+            case 'JOIN_PENDING':
+                document.getElementById('connection-status').innerText = "Waiting for Host Approval...";
+                break;
+            case 'JOIN_ACCEPTED':
+                netState.isScanning = false;
+                document.getElementById('connection-status').innerText = "Joined! Waiting for game start...";
+                break;
+            case 'JOIN_REJECTED':
+                if (netState.isScanning) {
+                     // Host rejected (maybe full or explicit decline)
+                     // Try next slot
+                     scanPublicSlots(netState.currentScanIndex + 1);
+                } else {
+                    netState.isScanning = false;
+                    alert(data.message);
+                    location.reload();
+                }
                 break;
         }
     }
@@ -325,6 +511,17 @@ function handleJoinRequest(data, conn) {
         return;
     }
 
+    // GAME STARTED CHECK
+    const gameInProgress = !document.getElementById('lobby-screen').classList.contains('active');
+    if (gameInProgress && !data.isSpectator) {
+        conn.send({
+            type: 'JOIN_ERROR',
+            message: 'Game already started!'
+        });
+        setTimeout(() => conn.close(), 500);
+        return;
+    }
+
     // SPECTATOR LOGIC
     if (data.isSpectator) {
          netState.clients.push({
@@ -351,30 +548,89 @@ function handleJoinRequest(data, conn) {
         return;
     }
 
+    // ROOM FULL CHECK
+    // Count current human players (Host=1 + Clients)
+    const currentPlayers = 1 + netState.clients.filter(c => !c.isSpectator).length;
+    if (currentPlayers >= 6) {
+        conn.send({
+            type: 'JOIN_ERROR',
+            message: 'Room is full (Max 6 players)!'
+        });
+        setTimeout(() => conn.close(), 500);
+        return;
+    }
+
     // NEW JOIN
     const hostName = document.getElementById('my-player-name').value.trim() || 'Host';
     const existingNames = netState.clients.map(c => c.name);
     existingNames.push(hostName);
 
-    if (existingNames.includes(data.name)) {
+    // Check Pending names too
+    const pendingNames = netState.pendingClients.map(c => c.name);
+    if (existingNames.includes(data.name) || pendingNames.includes(data.name)) {
         // Name Taken - REJECT
         conn.send({
             type: 'JOIN_ERROR',
             message: 'Name already taken! Please choose another.'
         });
-        setTimeout(() => conn.close(), 500); // Give time for message to send
+        setTimeout(() => conn.close(), 500);
         return;
     }
 
-    netState.clients.push({
-        id: conn.peer,
-        conn: conn,
-        name: data.name,
-        status: 'connected',
-        isSpectator: false
-    });
+    if (netState.requiresApproval) {
+        // Add to Pending
+        netState.pendingClients.push({
+            id: conn.peer,
+            conn: conn,
+            name: data.name,
+            isSpectator: false
+        });
+
+        conn.send({ type: 'JOIN_PENDING' }); // Tell client to wait
+        updateLobbyList(); // Refresh to show pending
+    } else {
+        // Auto-Accept
+        netState.clients.push({
+            id: conn.peer,
+            conn: conn,
+            name: data.name,
+            status: 'connected',
+            isSpectator: false
+        });
+        updateLobbyList();
+        broadcastLobbyUpdate();
+    }
+}
+
+function approvePlayer(peerId) {
+    const idx = netState.pendingClients.findIndex(c => c.id === peerId);
+    if (idx === -1) return;
+
+    const p = netState.pendingClients[idx];
+    netState.pendingClients.splice(idx, 1);
+
+    // Add to real clients
+    p.status = 'connected';
+    netState.clients.push(p);
+
+    // Notify
+    p.conn.send({ type: 'JOIN_ACCEPTED' });
+
     updateLobbyList();
     broadcastLobbyUpdate();
+}
+
+function rejectPlayer(peerId) {
+    const idx = netState.pendingClients.findIndex(c => c.id === peerId);
+    if (idx === -1) return;
+
+    const p = netState.pendingClients[idx];
+    netState.pendingClients.splice(idx, 1);
+
+    p.conn.send({ type: 'JOIN_REJECTED', message: 'Host declined your request.' });
+    setTimeout(() => p.conn.close(), 500);
+
+    updateLobbyList();
 }
 
 
@@ -428,6 +684,53 @@ function updateLobbyList() {
             li.style.color = '#aaa';
             li.style.fontStyle = 'italic';
             list.appendChild(li);
+        }
+
+        // 4. Pending Requests
+        const pendingList = document.getElementById('pending-players-list');
+        pendingList.innerHTML = '';
+        if (netState.pendingClients.length > 0) {
+            document.getElementById('pending-players-section').classList.remove('hidden');
+            netState.pendingClients.forEach(c => {
+                const li = document.createElement('li');
+                li.style.display = 'flex';
+                li.style.justifyContent = 'space-between';
+                li.style.alignItems = 'center';
+                li.style.marginBottom = '5px';
+
+                const span = document.createElement('span');
+                span.innerText = c.name;
+
+                const btnGroup = document.createElement('div');
+
+                const btnApprove = document.createElement('button');
+                btnApprove.innerText = '✔';
+                btnApprove.style.background = 'green';
+                btnApprove.style.marginRight = '5px';
+                btnApprove.style.padding = '2px 8px';
+                btnApprove.onclick = () => approvePlayer(c.id);
+
+                const btnReject = document.createElement('button');
+                btnReject.innerText = '✖';
+                btnReject.style.background = 'red';
+                btnReject.style.padding = '2px 8px';
+                btnReject.onclick = () => rejectPlayer(c.id);
+
+                btnGroup.appendChild(btnApprove);
+                btnGroup.appendChild(btnReject);
+                li.appendChild(span);
+                li.appendChild(btnGroup);
+                pendingList.appendChild(li);
+            });
+        } else {
+             // Keep hidden if empty, or just empty list?
+             // Logic in handleJoinRequest unhides it.
+             // If empty, we can hide it again to be clean.
+             if (netState.requiresApproval) {
+                 // Keep section visible if we are in approval mode?
+                 // Maybe just hide if empty is cleaner.
+                 if (netState.pendingClients.length === 0) document.getElementById('pending-players-section').classList.add('hidden');
+             }
         }
     }
 }

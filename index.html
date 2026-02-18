@@ -76,10 +76,16 @@
                         <input type="text" id="my-player-name" placeholder="Enter Name" maxlength="20" style="width: 100%; box-sizing: border-box; text-align: center; padding: 10px; margin-top: 5px;">
                     </div>
 
+                    <div class="control-group" style="margin: 10px 0; text-align: center;">
+                        <input type="checkbox" id="allow-random-join" style="margin-right: 5px;">
+                        <label for="allow-random-join" style="font-size: 0.9rem;">Allow Random Players to Join</label>
+                    </div>
+
                     <button class="secondary" onclick="initHost()">Create Game (Host)</button>
                     <div style="margin: 10px 0;">- OR -</div>
                     <input type="text" id="host-id-input" placeholder="Paste Room Code Here" style="width: 100%; box-sizing: border-box; text-align: center; margin-bottom: 10px;">
                     <button class="secondary" onclick="joinGame()">Join Game</button>
+                    <button class="secondary" onclick="findPublicGame()" style="margin-top:5px; background: #2196F3;">Find Public Game</button>
                     <button class="secondary" onclick="joinGame(true)" style="margin-top:5px; border-color: #888; color: #aaa;">Join as Spectator</button>
                 </div>
 
@@ -107,6 +113,13 @@
                             </select>
                         </div>
 
+                    </div>
+
+                    <div id="pending-players-section" class="hidden">
+                        <h3 style="color: #FFC107;">Pending Join Requests:</h3>
+                        <ul id="pending-players-list" style="list-style: none; padding: 0; text-align: left; background: #332200; padding: 10px; border-radius: 5px;">
+                            <!-- Pending List -->
+                        </ul>
                     </div>
 
                     <h3>Players in Lobby:</h3>
