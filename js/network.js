@@ -29,8 +29,8 @@ let netState = {
     blockScanTimeout: null
 };
 
-const PUBLIC_ROOM_LIMIT = 100;
-const SCAN_BLOCK_SIZE = 20;
+const PUBLIC_ROOM_LIMIT = 75;
+const SCAN_BLOCK_SIZE = 15;
 
 // --- HOST LOGIC ---
 function initHost() {
