@@ -18,6 +18,19 @@ function getSecureRandomIndex(max) {
     return Math.floor(Math.random() * max);
 }
 
+/**
+ * Generates a cryptographically secure random hexadecimal string (e.g. for request IDs).
+ */
+function generateSecureId() {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+        const array = new Uint8Array(16);
+        window.crypto.getRandomValues(array);
+        return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    }
+    // Fallback
+    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+}
+
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = getSecureRandomIndex(i + 1);

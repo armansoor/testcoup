@@ -8,6 +8,8 @@ function updateUI() {
     // Opponents
     const oppContainer = document.getElementById('opponents-container');
     oppContainer.innerHTML = '';
+    // Use DocumentFragment to batch DOM updates and minimize reflows
+    const oppFragment = document.createDocumentFragment();
     gameState.players.forEach(pl => {
         // Filter out the player shown in the main area
         let shouldHide = false;
@@ -69,7 +71,14 @@ function updateUI() {
         cardsDiv.innerHTML = cardHtml; // Safe: cardHtml constructed from trusted ROLES
         div.appendChild(cardsDiv);
         oppContainer.appendChild(div);
+        div.innerHTML = `
+            <div><strong>${pl.name}</strong></div>
+            <div>${pl.coins} Coins</div>
+            <div>${cardHtml}</div>
+        `;
+        oppFragment.appendChild(div);
     });
+    oppContainer.appendChild(oppFragment);
 
     // Player Area
     const playerArea = document.getElementById('player-area');
@@ -108,14 +117,17 @@ function updateUI() {
 
         const cardBox = document.getElementById('player-cards');
         cardBox.innerHTML = '';
+        // Batch card updates
+        const cardFragment = document.createDocumentFragment();
         me.cards.forEach((c, idx) => {
             if (!c) return;
             const cDiv = document.createElement('div');
             const roleClass = c.role ? `role-${c.role.toLowerCase()}` : '';
             cDiv.className = `player-card ${roleClass} ${c.dead ? 'dead' : ''}`;
             cDiv.innerText = c.role;
-            cardBox.appendChild(cDiv);
+            cardFragment.appendChild(cDiv);
         });
+        cardBox.appendChild(cardFragment);
     } else {
          // Watching bots only or Spectator
          if (myPlayerId === -1) {
@@ -282,32 +294,15 @@ function showHistory() {
 
         const date = new Date(entry.date).toLocaleString();
 
-        // SECURITY FIX: Prevent XSS via history data
-        const winnerDiv = document.createElement('div');
-        winnerDiv.style.fontWeight = 'bold';
-        winnerDiv.style.color = '#4caf50';
-        winnerDiv.innerText = `Winner: ${entry.winner}`;
-        div.appendChild(winnerDiv);
+        const safeWinner = sanitize(entry.winner);
+        const safePlayers = entry.players.map(p => sanitize(p)).join(', ');
 
-        const dateDiv = document.createElement('div');
-        dateDiv.style.fontSize = '0.8rem';
-        dateDiv.style.color = '#aaa';
-        dateDiv.innerText = date;
-        div.appendChild(dateDiv);
-
-        const playersDiv = document.createElement('div');
-        playersDiv.style.fontSize = '0.8rem';
-        playersDiv.innerText = `Players: ${entry.players.join(', ')}`;
-        div.appendChild(playersDiv);
-
-        const replayBtn = document.createElement('button');
-        replayBtn.className = 'small-btn';
-        replayBtn.style.marginTop = '5px';
-        replayBtn.style.background = '#2196F3';
-        replayBtn.style.width = 'auto';
-        replayBtn.innerText = 'Watch Replay';
-        replayBtn.onclick = () => loadReplay(idx);
-        div.appendChild(replayBtn);
+        div.innerHTML = `
+            <div style="font-weight:bold; color:#4caf50;">Winner: ${safeWinner}</div>
+            <div style="font-size:0.8rem; color:#aaa;">${date}</div>
+            <div style="font-size:0.8rem;">Players: ${safePlayers}</div>
+            <button class="small-btn" onclick="loadReplay(${idx})" style="margin-top:5px; background:#2196F3; width: auto;">Watch Replay</button>
+        `;
         list.appendChild(div);
     });
 }
