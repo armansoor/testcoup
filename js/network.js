@@ -29,8 +29,8 @@ let netState = {
     blockScanTimeout: null
 };
 
-const PUBLIC_ROOM_LIMIT = 75;
-const SCAN_BLOCK_SIZE = 15;
+const PUBLIC_ROOM_LIMIT = 60;
+const SCAN_BLOCK_SIZE = 10;
 
 // --- HOST LOGIC ---
 function initHost() {
@@ -370,8 +370,8 @@ function scanPublicSlotBlock(startIndex) {
     if (netState.blockScanTimeout) clearTimeout(netState.blockScanTimeout);
     netState.blockScanTimeout = setTimeout(() => {
         if (netState.isScanning) {
-            // Force next block
-            scanPublicSlotBlock(endIndex + 1);
+            // Force next block with a small cooldown to allow socket cleanup
+            setTimeout(() => scanPublicSlotBlock(endIndex + 1), 300);
         }
     }, 1500); // 1.5s per block hard limit
 
