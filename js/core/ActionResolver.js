@@ -329,9 +329,6 @@ async function resolveActionEffect() {
             // Filter out any undefined just in case
             const cardsToChoose = [...currentAlive, ...drawnCards].filter(c => c);
 
-            // Log for debugging
-            console.log(`Exchange: ${freshP.name} has ${currentAlive.length} alive, drew ${drawnCards.length}. Keep: ${keepCount}. Total choice: ${cardsToChoose.length}`);
-
             updateUI(); // Force UI update before showing selection modal
 
             // Safety: If cardsToChoose has fewer cards than we need to keep (e.g. deck empty AND hand corrupted),
