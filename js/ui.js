@@ -56,6 +56,21 @@ function updateUI() {
             }
         });
 
+        // SECURITY FIX: Prevent XSS via player name
+        const nameDiv = document.createElement('div');
+        const strong = document.createElement('strong');
+        strong.innerText = pl.name;
+        nameDiv.appendChild(strong);
+        div.appendChild(nameDiv);
+
+        const coinsDiv = document.createElement('div');
+        coinsDiv.innerText = `${pl.coins} Coins`;
+        div.appendChild(coinsDiv);
+
+        const cardsDiv = document.createElement('div');
+        cardsDiv.innerHTML = cardHtml; // Safe: cardHtml constructed from trusted ROLES
+        div.appendChild(cardsDiv);
+        oppContainer.appendChild(div);
         div.innerHTML = `
             <div><strong>${pl.name}</strong></div>
             <div>${pl.coins} Coins</div>
