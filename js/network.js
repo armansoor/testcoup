@@ -25,7 +25,8 @@ let netState = {
     requiresApproval: false,
     isScanning: false,
     currentScanIndex: 1,
-    activeScanConnections: [] // Track parallel connections to close losers
+    activeScanConnections: [], // Track parallel connections to close losers
+    blockScanTimeout: null
 };
 
 const PUBLIC_ROOM_LIMIT = 100;
@@ -352,7 +353,9 @@ function findPublicGame() {
 function scanPublicSlotBlock(startIndex) {
     if (!netState.isScanning) return;
     netState.currentScanIndex = startIndex; // For reference
-    netState.activeScanConnections = [];
+
+    // Clear previous block stuff
+    cleanupBlockScan(null);
 
     if (startIndex > PUBLIC_ROOM_LIMIT) {
         alert("No public games found. Try creating one!");
@@ -363,25 +366,29 @@ function scanPublicSlotBlock(startIndex) {
     const endIndex = Math.min(startIndex + SCAN_BLOCK_SIZE - 1, PUBLIC_ROOM_LIMIT);
     document.getElementById('connection-status').innerText = `Scanning Rooms ${startIndex}-${endIndex}...`;
 
-    let pendingCount = (endIndex - startIndex) + 1;
-    let blockFailed = true; // Assume all fail unless one succeeds
+    // Master Block Timeout - Forces move to next block if nothing found
+    if (netState.blockScanTimeout) clearTimeout(netState.blockScanTimeout);
+    netState.blockScanTimeout = setTimeout(() => {
+        if (netState.isScanning) {
+            // Force next block
+            scanPublicSlotBlock(endIndex + 1);
+        }
+    }, 1500); // 1.5s per block hard limit
 
     for (let i = startIndex; i <= endIndex; i++) {
         const hostId = `coup_public_${i}`;
         const conn = netState.peer.connect(hostId, { reliable: true });
         netState.activeScanConnections.push(conn);
 
-        let myTimeout = null;
-
         // Success Handler
         conn.on('open', () => {
             if (!netState.isScanning) return; // Already joined another?
 
             // WINNER!
-            netState.isScanning = false; // Stop other attempts logic
-            blockFailed = false;
+            netState.isScanning = false;
+            if (netState.blockScanTimeout) clearTimeout(netState.blockScanTimeout);
 
-            // Clear all timeouts/handlers for this block (cleanup)
+            // Cleanup losers
             cleanupBlockScan(conn);
 
             // Proceed to Join
@@ -391,45 +398,18 @@ function scanPublicSlotBlock(startIndex) {
             conn.send({ type: 'JOIN', name: name, isSpectator: false });
         });
 
-        // Data Handler (for Reject/Accept)
         conn.on('data', (data) => handleNetworkData(data, conn));
 
-        // Error/Close Handler
-        let handled = false;
-        const failHandler = () => {
-            if (handled || !netState.isScanning) return;
-            handled = true;
-
-            // This one failed.
-            conn.close();
-
-            pendingCount--;
-            if (pendingCount === 0 && blockFailed) {
-                // All failed in this block
-                scanPublicSlotBlock(endIndex + 1);
-            }
-        };
-
-        conn.on('close', failHandler);
-        conn.on('error', failHandler);
-
-        // Timeout Safety
-        myTimeout = setTimeout(() => {
-            if (conn.open) return; // Open handled above
-            failHandler();
-        }, 1200); // 1.2s timeout for block
-
-        conn.scanTimeout = myTimeout; // Attach for cleanup
+        conn.on('error', () => { conn.close(); });
     }
 }
 
 function cleanupBlockScan(winnerConn) {
     netState.activeScanConnections.forEach(c => {
         if (c !== winnerConn) {
-            c.close(); // Close losers
-            c.removeAllListeners(); // Prevent callback spam
+            c.close();
+            c.removeAllListeners();
         }
-        if (c.scanTimeout) clearTimeout(c.scanTimeout);
     });
     netState.activeScanConnections = [];
 }
