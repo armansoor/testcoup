@@ -3,6 +3,9 @@
 function submitAction(actionType) {
     const p = getCurrentPlayer();
 
+    // Stop Timer
+    if (typeof clearTurnTimer === 'function') clearTurnTimer();
+
     // FORCED COUP CHECK
     if (p.coins >= 10 && actionType !== 'Coup') {
         alert("You have 10+ coins. You MUST Coup!");

@@ -166,6 +166,10 @@ async function runLocalTests() {
 
     const gs1 = sp.gameState; // Direct access thanks to exposure
 
+    // FORCE START PLAYER TO HUMAN (Since we added Randomized Start)
+    gs1.currentPlayerIndex = 0;
+    sp.updateUI();
+
     console.log(`Players: ${gs1.players.length}`);
     if (gs1.players.length !== 2) throw new Error("Incorrect player count");
     if (gs1.players[0].isAI) throw new Error("Player 1 should be Human");
@@ -197,6 +201,10 @@ async function runLocalTests() {
     pp.startGame();
 
     const gs2 = pp.gameState;
+
+    // FORCE START PLAYER 1
+    gs2.currentPlayerIndex = 0;
+    pp.updateUI();
 
     if (gs2.players.length !== 2) throw new Error("Incorrect player count for P&P");
     if (gs2.players[1].isAI) throw new Error("Player 2 should be Human");
@@ -231,6 +239,11 @@ async function runLocalTests() {
     coupGame.startGame();
 
     const coupGS = coupGame.gameState;
+
+    // FORCE START PLAYER 1
+    coupGS.currentPlayerIndex = 0;
+    coupGame.updateUI();
+
     coupGS.players[0].coins = 7;
 
     // Mock loss

@@ -12,6 +12,10 @@ let isReplayMode = false;
 let activeReplayData = [];
 let currentReplayIndex = 0;
 
+var turnTimer = null;
+var TURN_LIMIT_SECONDS = 180;
+var lastWinnerName = null;
+
 // --- CORE CLASSES ---
 
 class Player {

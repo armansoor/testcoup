@@ -445,6 +445,9 @@ function handleNetworkData(data, conn) {
                 break;
             case 'ACTION':
                 // Client submitting an action
+                // Stop Timer if running
+                if (typeof clearTurnTimer === 'function') clearTurnTimer();
+
                 // Find player
                 const p = gameState.players.find(pl => pl.peerId === conn.peer);
                 if (p && gameState.players[gameState.currentPlayerIndex].id === p.id) {
@@ -504,6 +507,10 @@ function handleNetworkData(data, conn) {
                 document.getElementById('connection-status').innerText = "Joined! Waiting for game start...";
                 break;
             case 'JOIN_REJECTED':
+                alert(data.message);
+                location.reload();
+                break;
+            case 'KICKED':
                 alert(data.message);
                 location.reload();
                 break;
@@ -695,15 +702,28 @@ function updateLobbyList() {
     // 2. Connected Clients
     netState.clients.forEach(c => {
         const li = document.createElement('li');
-        li.innerText = c.name;
+        const nameSpan = document.createElement('span');
+        nameSpan.innerText = c.name;
+        li.appendChild(nameSpan);
+
         if (c.status === 'disconnected') {
             li.style.color = 'red';
-            li.innerText += " (Offline)";
+            nameSpan.innerText += " (Offline)";
         }
         if (c.isSpectator) {
             li.style.color = '#aaa';
             li.style.fontStyle = 'italic';
         }
+
+        // Host Kick Button
+        if (netState.isHost) {
+            const kickBtn = document.createElement('button');
+            kickBtn.innerText = 'Kick';
+            kickBtn.className = 'kick-btn';
+            kickBtn.onclick = () => kickPlayer(c.id);
+            li.appendChild(kickBtn);
+        }
+
         list.appendChild(li);
     });
 
@@ -765,6 +785,27 @@ function updateLobbyList() {
              }
         }
     }
+}
+
+function kickPlayer(peerId) {
+    if (!netState.isHost) return;
+
+    const idx = netState.clients.findIndex(c => c.id === peerId);
+    if (idx === -1) return;
+
+    const client = netState.clients[idx];
+
+    // Notify client
+    if (client.conn && client.conn.open) {
+        client.conn.send({ type: 'KICKED', message: 'You were kicked by the host.' });
+        setTimeout(() => client.conn.close(), 500);
+    }
+
+    // Remove from list
+    netState.clients.splice(idx, 1);
+
+    updateLobbyList();
+    broadcastLobbyUpdate();
 }
 
 function broadcastLobbyUpdate() {
@@ -860,7 +901,19 @@ function startNetworkGame() {
         p.cards = [gameState.deck.pop(), gameState.deck.pop()];
     });
 
+    // Randomized Start / Winner Starts
     gameState.currentPlayerIndex = 0;
+    if (lastWinnerName) {
+        const winnerIdx = gameState.players.findIndex(p => p.name === lastWinnerName);
+        if (winnerIdx !== -1) {
+            gameState.currentPlayerIndex = winnerIdx;
+            // log(`${lastWinnerName} (Previous Winner) takes the first turn.`, 'system'); // log not ready?
+        } else {
+             gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
+        }
+    } else {
+        gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
+    }
 
     // UI Switch for Host
     document.getElementById('lobby-screen').classList.remove('active');
