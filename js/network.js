@@ -119,6 +119,16 @@ function startHostPeer(customId, requireApproval) {
     setupHostPeerEvents(peer, requireApproval);
 }
 
+function handleHostOpen(id, requireApproval) {
+    document.getElementById('my-room-code').innerText = id;
+    document.getElementById('connection-status').innerText = "Waiting for players...";
+    document.getElementById('network-start-btn').classList.remove('hidden');
+    if (requireApproval) {
+        document.getElementById('pending-players-section').classList.remove('hidden');
+    }
+    updateLobbyList();
+}
+
 function setupHostPeerEvents(peer, requireApproval) {
     netState.peer = peer;
     netState.isHost = true;
@@ -129,6 +139,11 @@ function setupHostPeerEvents(peer, requireApproval) {
     document.getElementById('online-actions').classList.add('hidden');
     document.getElementById('lobby-status').classList.remove('hidden');
     document.getElementById('host-room-info').classList.remove('hidden');
+
+    // If Peer is already open (e.g. from tryReservePublicSlot), trigger open logic immediately
+    if (peer.open) {
+        handleHostOpen(peer.id, requireApproval);
+    }
 
     netState.peer.on('error', (err) => {
         console.error("PeerJS Error:", err);
@@ -145,13 +160,7 @@ function setupHostPeerEvents(peer, requireApproval) {
     });
 
     netState.peer.on('open', (id) => {
-        document.getElementById('my-room-code').innerText = id;
-        document.getElementById('connection-status').innerText = "Waiting for players...";
-        document.getElementById('network-start-btn').classList.remove('hidden');
-        if (requireApproval) {
-            document.getElementById('pending-players-section').classList.remove('hidden');
-        }
-        updateLobbyList();
+        handleHostOpen(id, requireApproval);
     });
 
     netState.peer.on('connection', (conn) => {
