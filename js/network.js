@@ -28,8 +28,8 @@ let netState = {
     activeScanConnections: [] // Track parallel connections to close losers
 };
 
-const PUBLIC_ROOM_LIMIT = 20;
-const SCAN_BLOCK_SIZE = 5;
+const PUBLIC_ROOM_LIMIT = 100;
+const SCAN_BLOCK_SIZE = 20;
 
 // --- HOST LOGIC ---
 function initHost() {
