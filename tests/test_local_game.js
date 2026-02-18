@@ -102,6 +102,15 @@ function createInstance(config = {}) {
         Date: Date,
         parseInt: parseInt,
         localStorage: { getItem: () => null, setItem: () => {} },
+        crypto: {
+            getRandomValues: (arr) => {
+                for (let i = 0; i < arr.length; i++) {
+                    arr[i] = Math.floor(Math.random() * (arr instanceof Uint32Array ? 0xffffffff : 256));
+                }
+                return arr;
+            }
+        },
+        Uint32Array: Uint32Array,
         Blob: class {},
         URL: { createObjectURL: () => '', revokeObjectURL: () => {} },
         Peer: class { on() {} connect() {} },

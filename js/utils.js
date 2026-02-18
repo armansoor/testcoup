@@ -1,13 +1,31 @@
 // Utility Functions
 
+/**
+ * Generates a cryptographically secure random integer between 0 (inclusive) and max (exclusive).
+ * Falls back to Math.random() if window.crypto is unavailable.
+ */
+function getSecureRandomIndex(max) {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+        const arr = new Uint32Array(1);
+        const maxUint32 = 0xffffffff;
+        const range = Math.floor(maxUint32 / max) * max;
+        do {
+            window.crypto.getRandomValues(arr);
+        } while (arr[0] >= range);
+        return arr[0] % max;
+    }
+    // Fallback for non-browser or old browser environments
+    return Math.floor(Math.random() * max);
+}
+
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = getSecureRandomIndex(i + 1);
         [array[i], array[j]] = [array[j], array[i]];
     }
     // Double shuffle for "feel"
     for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = getSecureRandomIndex(i + 1);
         [array[i], array[j]] = [array[j], array[i]];
     }
 }
