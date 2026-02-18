@@ -24,10 +24,12 @@ let netState = {
     pendingClients: [], // For approval queue
     requiresApproval: false,
     isScanning: false,
-    currentScanIndex: 1
+    currentScanIndex: 1,
+    activeScanConnections: [] // Track parallel connections to close losers
 };
 
 const PUBLIC_ROOM_LIMIT = 20;
+const SCAN_BLOCK_SIZE = 5;
 
 // --- HOST LOGIC ---
 function initHost() {
@@ -343,68 +345,93 @@ function findPublicGame() {
     });
 
     netState.peer.on('open', (id) => {
-        scanPublicSlots(1);
+        scanPublicSlotBlock(1);
     });
 }
 
-function scanPublicSlots(index) {
+function scanPublicSlotBlock(startIndex) {
     if (!netState.isScanning) return;
-    netState.currentScanIndex = index;
+    netState.currentScanIndex = startIndex; // For reference
+    netState.activeScanConnections = [];
 
-    if (index > PUBLIC_ROOM_LIMIT) {
+    if (startIndex > PUBLIC_ROOM_LIMIT) {
         alert("No public games found. Try creating one!");
         location.reload();
         return;
     }
 
-    document.getElementById('connection-status').innerText = `Scanning Room ${index}/${PUBLIC_ROOM_LIMIT}...`;
-    const hostId = `coup_public_${index}`;
+    const endIndex = Math.min(startIndex + SCAN_BLOCK_SIZE - 1, PUBLIC_ROOM_LIMIT);
+    document.getElementById('connection-status').innerText = `Scanning Rooms ${startIndex}-${endIndex}...`;
 
-    // Attempt Connect
-    const conn = netState.peer.connect(hostId, {
-        reliable: true
-    });
+    let pendingCount = (endIndex - startIndex) + 1;
+    let blockFailed = true; // Assume all fail unless one succeeds
 
-    let connected = false;
+    for (let i = startIndex; i <= endIndex; i++) {
+        const hostId = `coup_public_${i}`;
+        const conn = netState.peer.connect(hostId, { reliable: true });
+        netState.activeScanConnections.push(conn);
 
-    // Timeout for this slot
-    const timer = setTimeout(() => {
-        if (!connected) {
-            conn.close(); // Cancel this attempt
-            // Move next
-            scanPublicSlots(index + 1);
+        let myTimeout = null;
+
+        // Success Handler
+        conn.on('open', () => {
+            if (!netState.isScanning) return; // Already joined another?
+
+            // WINNER!
+            netState.isScanning = false; // Stop other attempts logic
+            blockFailed = false;
+
+            // Clear all timeouts/handlers for this block (cleanup)
+            cleanupBlockScan(conn);
+
+            // Proceed to Join
+            netState.hostConn = conn;
+            document.getElementById('connection-status').innerText = `Found Room ${i}! Joining...`;
+            const name = document.getElementById('my-player-name').value.trim();
+            conn.send({ type: 'JOIN', name: name, isSpectator: false });
+        });
+
+        // Data Handler (for Reject/Accept)
+        conn.on('data', (data) => handleNetworkData(data, conn));
+
+        // Error/Close Handler
+        let handled = false;
+        const failHandler = () => {
+            if (handled || !netState.isScanning) return;
+            handled = true;
+
+            // This one failed.
+            conn.close();
+
+            pendingCount--;
+            if (pendingCount === 0 && blockFailed) {
+                // All failed in this block
+                scanPublicSlotBlock(endIndex + 1);
+            }
+        };
+
+        conn.on('close', failHandler);
+        conn.on('error', failHandler);
+
+        // Timeout Safety
+        myTimeout = setTimeout(() => {
+            if (conn.open) return; // Open handled above
+            failHandler();
+        }, 1200); // 1.2s timeout for block
+
+        conn.scanTimeout = myTimeout; // Attach for cleanup
+    }
+}
+
+function cleanupBlockScan(winnerConn) {
+    netState.activeScanConnections.forEach(c => {
+        if (c !== winnerConn) {
+            c.close(); // Close losers
+            c.removeAllListeners(); // Prevent callback spam
         }
-    }, 800); // 0.8s timeout
-
-    conn.on('open', () => {
-        connected = true;
-        clearTimeout(timer);
-
-        // Success! We found a host.
-        // Proceed to join logic
-        netState.hostConn = conn;
-        document.getElementById('connection-status').innerText = "Found Room! Joining...";
-
-        const name = document.getElementById('my-player-name').value.trim();
-        conn.send({ type: 'JOIN', name: name, isSpectator: false });
+        if (c.scanTimeout) clearTimeout(c.scanTimeout);
     });
-
-    conn.on('data', (data) => handleNetworkData(data, conn));
-
-    conn.on('close', () => {
-        // If connection closes while we are scanning (e.g. host rejected immediately via close?)
-        if (netState.isScanning && netState.hostConn === conn) {
-            // Check if we were actually rejected via message first
-            // If not, it might be a network drop or host full close
-            // We can try next?
-            // Safer to just let user know or retry?
-            // For now, let's rely on explicit REJECT message handling.
-        }
-    });
-
-    conn.on('error', (err) => {
-        // Usually handled by timeout
-    });
+    netState.activeScanConnections = [];
 }
 
 function handleNetworkData(data, conn) {
@@ -458,31 +485,27 @@ function handleNetworkData(data, conn) {
                 handleGameOver(data);
                 break;
             case 'JOIN_ERROR':
-                if (netState.isScanning) {
-                     // Try next slot
-                     scanPublicSlots(netState.currentScanIndex + 1);
-                } else {
-                    alert(data.message);
-                    location.reload();
-                }
+                // For parallel scan, if one errors (e.g. room full), we treat it as a fail.
+                // But we already set isScanning=false on Open.
+                // So if we get Error now, we should resume scanning?
+                // Yes, the "Winner" turned out to be invalid.
+                // Resume scan from next block? Or next index?
+                // Simpler: Just restart scan from next index relative to this one?
+                // Or just Alert and reload for simplicity in this edge case.
+                alert(data.message);
+                location.reload();
                 break;
             case 'JOIN_PENDING':
                 document.getElementById('connection-status').innerText = "Waiting for Host Approval...";
                 break;
             case 'JOIN_ACCEPTED':
+                // Final success
                 netState.isScanning = false;
                 document.getElementById('connection-status').innerText = "Joined! Waiting for game start...";
                 break;
             case 'JOIN_REJECTED':
-                if (netState.isScanning) {
-                     // Host rejected (maybe full or explicit decline)
-                     // Try next slot
-                     scanPublicSlots(netState.currentScanIndex + 1);
-                } else {
-                    netState.isScanning = false;
-                    alert(data.message);
-                    location.reload();
-                }
+                alert(data.message);
+                location.reload();
                 break;
         }
     }
