@@ -355,10 +355,20 @@ function askHumanChallenge(player, actionObj) {
         title.innerText = msg;
         btns.innerHTML = '';
 
+        // Start Timer (if available)
+        if (typeof startReactionTimer === 'function') {
+            startReactionTimer(() => {
+                // On Timeout
+                panel.classList.add('hidden');
+                resolve(false); // Auto-pass
+            });
+        }
+
         const yesBtn = document.createElement('button');
         yesBtn.innerText = 'Challenge!';
         yesBtn.className = 'red';
         yesBtn.onclick = () => {
+            if (typeof clearReactionTimer === 'function') clearReactionTimer();
             panel.classList.add('hidden');
             resolve(true);
         };
@@ -366,6 +376,7 @@ function askHumanChallenge(player, actionObj) {
         const noBtn = document.createElement('button');
         noBtn.innerText = 'Pass';
         noBtn.onclick = () => {
+            if (typeof clearReactionTimer === 'function') clearReactionTimer();
             panel.classList.add('hidden');
             resolve(false);
         };
@@ -387,6 +398,15 @@ function askHumanBlock(player, actionObj) {
         title.innerText = `${player.name}, do you want to Block ${actionObj.type} (claims ${blockerRolesStr})?`;
         btns.innerHTML = '';
 
+        // Start Timer (if available)
+        if (typeof startReactionTimer === 'function') {
+            startReactionTimer(() => {
+                // On Timeout
+                panel.classList.add('hidden');
+                resolve(false); // Auto-pass
+            });
+        }
+
         // Create a button for each possible blocking role
         blockerRoles.forEach(role => {
             const btn = document.createElement('button');
@@ -394,6 +414,7 @@ function askHumanBlock(player, actionObj) {
             const roleClass = role ? `role-${role.toLowerCase()}` : '';
             btn.className = roleClass;
             btn.onclick = () => {
+                if (typeof clearReactionTimer === 'function') clearReactionTimer();
                 panel.classList.add('hidden');
                 resolve(role); // Resolve with the specific Role Name
             };
@@ -403,6 +424,7 @@ function askHumanBlock(player, actionObj) {
         const noBtn = document.createElement('button');
         noBtn.innerText = 'Pass';
         noBtn.onclick = () => {
+            if (typeof clearReactionTimer === 'function') clearReactionTimer();
             panel.classList.add('hidden');
             resolve(false);
         };
