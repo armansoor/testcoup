@@ -54,7 +54,19 @@ function startGame() {
         p.cards = [gameState.deck.pop(), gameState.deck.pop()];
     });
 
+    // Randomized Start / Winner Starts
     gameState.currentPlayerIndex = 0;
+    if (lastWinnerName) {
+        const winnerIdx = gameState.players.findIndex(p => p.name === lastWinnerName);
+        if (winnerIdx !== -1) {
+            gameState.currentPlayerIndex = winnerIdx;
+            log(`${lastWinnerName} (Previous Winner) takes the first turn.`, 'system');
+        } else {
+             gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
+        }
+    } else {
+        gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
+    }
 
     document.getElementById('lobby-screen').classList.remove('active');
     document.getElementById('game-screen').classList.add('active');
@@ -70,6 +82,11 @@ function playTurn() {
     log(`--- ${p.name}'s Turn ---`);
     updateUI();
     broadcastState();
+
+    // Start Timer (if not AI)
+    if (!p.isAI) {
+        startTurnTimer();
+    }
 
     if (p.isAI) {
         p.decideAction();
@@ -111,6 +128,8 @@ function nextTurn() {
         }
 
         setupGameOverUI(winner.name, winner.isAI);
+
+        lastWinnerName = winner.name; // Store for next game
 
         saveMatchHistory(winner);
         return;
@@ -233,4 +252,56 @@ async function handleInteractionRequest(data) {
             response: response
         });
     }
+}
+
+// --- TURN TIMER LOGIC ---
+function startTurnTimer() {
+    clearTurnTimer(); // Safety clear
+
+    const timerEl = document.getElementById('turn-timer');
+    if (!timerEl) return;
+
+    let timeLeft = TURN_LIMIT_SECONDS;
+    timerEl.innerText = timeLeft;
+    timerEl.classList.remove('timer-low');
+
+    // Interval to update UI
+    const intervalId = setInterval(() => {
+        timeLeft--;
+        timerEl.innerText = timeLeft;
+
+        if (timeLeft <= 10) {
+            timerEl.classList.add('timer-low');
+        }
+
+        if (timeLeft <= 0) {
+            handleTurnTimeout();
+        }
+    }, 1000);
+
+    // Store interval ID in turnTimer variable (from state.js)
+    turnTimer = intervalId;
+}
+
+function clearTurnTimer() {
+    if (turnTimer) {
+        clearInterval(turnTimer);
+        turnTimer = null;
+    }
+    const timerEl = document.getElementById('turn-timer');
+    if (timerEl) {
+        timerEl.innerText = ''; // Clear display
+        timerEl.classList.remove('timer-low');
+    }
+}
+
+function handleTurnTimeout() {
+    clearTurnTimer();
+    const p = getCurrentPlayer();
+    log(`${p.name} timed out!`, 'important');
+
+    if (isNetworkGame && !netState.isHost) return; // Clients don't enforce timeout logic, only Host.
+
+    // Force 'Income'
+    handleActionSubmit('Income', p, null);
 }
