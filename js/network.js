@@ -1042,24 +1042,30 @@ function syncClientState(remoteState) {
 }
 
 function broadcastState() {
+    let s = null;
+
+    // Optimize: Serialize once if we are going to broadcast
+    if (isNetworkGame && netState.isHost) {
+        s = serializeState();
+    }
+
     // CAPTURE REPLAY (HOST / LOCAL)
     // We capture every broadcast state, which corresponds to every significant UI update.
     if (!isReplayMode) {
-        captureReplaySnapshot();
+        captureReplaySnapshot(s);
     }
 
-    if (isNetworkGame && netState.isHost) {
-        const s = serializeState();
+    if (isNetworkGame && netState.isHost && s) {
         broadcast({ type: 'STATE_UPDATE', state: s });
     }
 }
 
-function captureReplaySnapshot() {
+function captureReplaySnapshot(preSerializedState) {
     if (!gameState.replayData) gameState.replayData = [];
 
-    // Create a deep copy snapshot
-    const s = serializeState();
-    s.timestamp = Date.now();
+    // Create a deep copy snapshot or use pre-serialized one
+    const s = preSerializedState || serializeState();
+    if (!s.timestamp) s.timestamp = Date.now();
 
     // Avoid duplicates if nothing changed (optional optimization, but strict capture is safer)
     gameState.replayData.push(s);
