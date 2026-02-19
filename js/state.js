@@ -91,13 +91,35 @@ class Player {
              if (hasBadHand && topCards.some(c => goodCards.includes(c.role))) {
                  action = 'Exchange';
              }
-             // Assassinate Logic: Kill if target has NO Contessa
-             else if (this.coins >= 3) {
-                 // Find target with NO Contessa
+
+             // SAFE PLAY: Only act if I have the role or it's unblockable (Coup)
+             // Prioritize Tax if I have Duke (Safe Income)
+             else if (this.hasRole('Duke')) {
+                 action = 'Tax';
+             }
+             // Prioritize Steal if I have Captain (Safe Steal) AND target has no block
+             else if (this.hasRole('Captain')) {
                  let target = null;
-                 // Prioritize strongest opponent who is vulnerable
+                 const opponents = gameState.players.filter(p => p.id !== this.id && p.alive && p.coins >= 2);
+                 opponents.sort((a, b) => b.coins - a.coins);
+
+                 for (let op of opponents) {
+                     const hasBlocker = op.cards.some(c => (c.role === 'Captain' || c.role === 'Ambassador') && !c.dead);
+                     if (!hasBlocker) {
+                         target = op;
+                         break;
+                     }
+                 }
+
+                 if (target) {
+                     handleActionSubmit('Steal', this, target);
+                     return;
+                 }
+             }
+             // Assassinate ONLY if I have Assassin AND target has no Contessa (Guaranteed Kill)
+             else if (this.coins >= 3 && this.hasRole('Assassin')) {
+                 let target = null;
                  const opponents = gameState.players.filter(p => p.id !== this.id && p.alive);
-                 // Sort by threat (cards > coins)
                  opponents.sort((a, b) => {
                      const aCards = a.cards.filter(c => !c.dead).length;
                      const bCards = b.cards.filter(c => !c.dead).length;
@@ -117,52 +139,26 @@ class Player {
                      handleActionSubmit('Assassinate', this, target);
                      return;
                  }
-                 // If all targets have Contessa, fall through to other actions (don't waste 3 coins)
+             } else if (this.coins >= 7) {
+                 this.doCoup();
+                 return;
              }
 
-             // Steal Logic: Steal if target has NO Captain/Ambassador (Safe Steal)
-             // Check if we already decided on an action (like Exchange)
+             // If no role-based action, default to Safe Income or Foreign Aid
              if (action === 'Income') {
-                 let target = null;
-                 const opponents = gameState.players.filter(p => p.id !== this.id && p.alive && p.coins >= 2);
-                 // Sort by most coins to steal
-                 opponents.sort((a, b) => b.coins - a.coins);
-
-                 for (let op of opponents) {
-                     const hasBlocker = op.cards.some(c => (c.role === 'Captain' || c.role === 'Ambassador') && !c.dead);
-                     if (!hasBlocker) {
-                         target = op;
-                         break;
+                 // Check if anyone has a Duke to block Foreign Aid
+                 let dukeThreat = false;
+                 gameState.players.forEach(p => {
+                     if (p.id !== this.id && p.alive) {
+                         if (p.cards.some(c => c.role === 'Duke' && !c.dead)) dukeThreat = true;
                      }
+                 });
+
+                 if (!dukeThreat) {
+                     action = 'Foreign Aid';
+                 } else {
+                     action = 'Income'; // Safest fallback
                  }
-
-                 if (target) {
-                     // Only steal if I HAVE Captain OR if I have < 3 coins (desperate)
-                     const hasCaptain = this.hasRole('Captain');
-                     if (hasCaptain || this.coins < 3) {
-                         handleActionSubmit('Steal', this, target);
-                         return;
-                     }
-                 }
-             }
-
-             // Tax Logic: Always good, unless someone has 2 Dukes (proof)
-             if (action === 'Income') {
-                  // Check for 2 Dukes in one hand
-                  let danger = false;
-                  gameState.players.forEach(p => {
-                      if (p.id !== this.id && p.alive) {
-                          const dukes = p.cards.filter(c => c.role === 'Duke' && !c.dead).length;
-                          if (dukes === 2) danger = true;
-                      }
-                  });
-
-                  if (!danger) {
-                      action = 'Tax';
-                  } else {
-                      // If dangerous to Tax (someone has proof)
-                      action = 'Exchange';
-                  }
              }
 
              handleActionSubmit(action, this, null);

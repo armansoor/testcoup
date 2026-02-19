@@ -1,19 +1,37 @@
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /index.html HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /style.css?v=2 HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /style_anim.css?v=2 HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /style_pass.css?v=2 HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /js/state.js HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /js/utils.js HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /js/ui.js HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /js/core/GameEngine.js HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /js/network.js HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /js/constants.js HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /js/core/ActionResolver.js HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /js/core/ReplayManager.js HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /js/audio.js HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /js/main.js HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:06] "GET /js/stats.js HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:07] "GET /sw.js HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:08] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [19/Feb/2026 08:33:08] code 404, message File not found
-127.0.0.1 - - [19/Feb/2026 08:33:08] "GET /js/game.js HTTP/1.1" 404 -
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 1314, in <module>
+    test(
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 1261, in test
+    with ServerClass(addr, HandlerClass) as httpd:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/socketserver.py", line 457, in __init__
+    self.server_bind()
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 1308, in server_bind
+    return super().server_bind()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 136, in server_bind
+    socketserver.TCPServer.server_bind(self)
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/socketserver.py", line 478, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 98] Address already in use
+127.0.0.1 - - [19/Feb/2026 09:04:38] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /style_pass.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /style_anim.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /js/core/GameEngine.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /js/constants.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /js/state.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /js/network.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /js/core/ActionResolver.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /js/core/ReplayManager.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /js/audio.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /js/stats.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /js/main.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /sw.js HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [19/Feb/2026 09:04:39] code 404, message File not found
+127.0.0.1 - - [19/Feb/2026 09:04:39] "GET /js/game.js HTTP/1.1" 404 -
