@@ -341,8 +341,28 @@ async function resolveActionEffect() {
                 freshP.cards = [...cardsToChoose, ...currentDead];
             } else {
                 if(freshP.isAI) {
-                    // AI Logic: Randomly keep 'keepCount' cards
-                    shuffle(cardsToChoose);
+                    if (freshP.difficulty === 'broken') {
+                         // Broken AI: Priority-based selection
+                         const getScore = (role) => {
+                             let score = 0;
+                             if (role === 'Duke') score = 5;
+                             else if (role === 'Captain') score = 4;
+                             else if (role === 'Assassin') score = 3;
+                             else if (role === 'Contessa') score = 2;
+                             else if (role === 'Ambassador') score = 1;
+
+                             // Contextual Modifiers
+                             if (freshP.coins < 3 && role === 'Duke') score += 5; // Need money
+                             if (freshP.coins >= 7 && role === 'Contessa') score += 5; // Protect the win
+                             if (freshP.coins >= 3 && freshP.coins < 7 && role === 'Assassin') score += 3; // Ready to kill
+                             return score;
+                         };
+
+                         cardsToChoose.sort((a, b) => getScore(b.role) - getScore(a.role));
+                    } else {
+                         // Normal AI: Randomly keep 'keepCount' cards
+                         shuffle(cardsToChoose);
+                    }
 
                     const kept = cardsToChoose.slice(0, keepCount);
                     const returned = cardsToChoose.slice(keepCount);
