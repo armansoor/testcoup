@@ -75,7 +75,99 @@ class Player {
         let action = 'Income';
 
         // Difficulty Logic
-        if (this.difficulty === 'hardcore') {
+        if (this.difficulty === 'broken') {
+             // 1. Coup (Unblockable win condition)
+             if (this.coins >= 7) {
+                 this.doCoup();
+                 return;
+             }
+
+             // PEAK AHEAD (Cheat): Check Deck
+             const topCards = gameState.deck.slice(-2);
+             const goodCards = ['Duke', 'Captain', 'Assassin', 'Contessa'];
+             const hasBadHand = this.cards.every(c => c.dead || !goodCards.includes(c.role));
+
+             // Exchange Priority: If hand is weak AND deck has good cards
+             if (hasBadHand && topCards.some(c => goodCards.includes(c.role))) {
+                 action = 'Exchange';
+             }
+             // Assassinate Logic: Kill if target has NO Contessa
+             else if (this.coins >= 3) {
+                 // Find target with NO Contessa
+                 let target = null;
+                 // Prioritize strongest opponent who is vulnerable
+                 const opponents = gameState.players.filter(p => p.id !== this.id && p.alive);
+                 // Sort by threat (cards > coins)
+                 opponents.sort((a, b) => {
+                     const aCards = a.cards.filter(c => !c.dead).length;
+                     const bCards = b.cards.filter(c => !c.dead).length;
+                     if (aCards !== bCards) return bCards - aCards;
+                     return b.coins - a.coins;
+                 });
+
+                 for (let op of opponents) {
+                     const hasContessa = op.cards.some(c => c.role === 'Contessa' && !c.dead);
+                     if (!hasContessa) {
+                         target = op;
+                         break;
+                     }
+                 }
+
+                 if (target) {
+                     handleActionSubmit('Assassinate', this, target);
+                     return;
+                 }
+                 // If all targets have Contessa, fall through to other actions (don't waste 3 coins)
+             }
+
+             // Steal Logic: Steal if target has NO Captain/Ambassador (Safe Steal)
+             // Check if we already decided on an action (like Exchange)
+             if (action === 'Income') {
+                 let target = null;
+                 const opponents = gameState.players.filter(p => p.id !== this.id && p.alive && p.coins >= 2);
+                 // Sort by most coins to steal
+                 opponents.sort((a, b) => b.coins - a.coins);
+
+                 for (let op of opponents) {
+                     const hasBlocker = op.cards.some(c => (c.role === 'Captain' || c.role === 'Ambassador') && !c.dead);
+                     if (!hasBlocker) {
+                         target = op;
+                         break;
+                     }
+                 }
+
+                 if (target) {
+                     // Only steal if I HAVE Captain OR if I have < 3 coins (desperate)
+                     const hasCaptain = this.hasRole('Captain');
+                     if (hasCaptain || this.coins < 3) {
+                         handleActionSubmit('Steal', this, target);
+                         return;
+                     }
+                 }
+             }
+
+             // Tax Logic: Always good, unless someone has 2 Dukes (proof)
+             if (action === 'Income') {
+                  // Check for 2 Dukes in one hand
+                  let danger = false;
+                  gameState.players.forEach(p => {
+                      if (p.id !== this.id && p.alive) {
+                          const dukes = p.cards.filter(c => c.role === 'Duke' && !c.dead).length;
+                          if (dukes === 2) danger = true;
+                      }
+                  });
+
+                  if (!danger) {
+                      action = 'Tax';
+                  } else {
+                      // If dangerous to Tax (someone has proof)
+                      action = 'Exchange';
+                  }
+             }
+
+             handleActionSubmit(action, this, null);
+             return;
+        } else if (this.difficulty === 'hardcore') {
             // GOD MODE: Win at all costs.
             if (this.coins >= 7) { this.doCoup(); return; }
 
@@ -169,6 +261,13 @@ class Player {
         // Identify the role being claimed
         const claimedRole = actionObj.role || ACTIONS[actionObj.type]?.role;
 
+        if (this.difficulty === 'broken' && claimedRole) {
+            const actor = actionObj.player;
+            const hasCard = actor.cards.some(c => c.role === claimedRole && !c.dead);
+            if (!hasCard) return true; // They are lying! Challenge!
+            return false; // They are telling the truth. Never challenge.
+        }
+
         if (claimedRole) {
             const myCopies = this.cards.filter(c => c && c.role === claimedRole && !c.dead).length;
 
@@ -234,6 +333,13 @@ class Player {
 
         // Bluff block?
         let shouldBluff = false;
+
+        if (this.difficulty === 'broken') {
+             // Fatal check: Assassinate
+            if (actionObj.type === 'Assassinate') shouldBluff = true; // Must block to survive
+            // Steal: Only if desperate
+            if (actionObj.type === 'Steal' && this.coins <= 1) shouldBluff = true;
+        }
 
         // Hardcore: Block almost always if targeted by assassination (to survive)
         if (this.difficulty === 'hardcore') {
