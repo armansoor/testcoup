@@ -70,12 +70,9 @@ function updateUI() {
         const cardsDiv = document.createElement('div');
         cardsDiv.innerHTML = cardHtml; // Safe: cardHtml constructed from trusted ROLES
         div.appendChild(cardsDiv);
-        oppContainer.appendChild(div);
-        div.innerHTML = `
-            <div><strong>${pl.name}</strong></div>
-            <div>${pl.coins} Coins</div>
-            <div>${cardHtml}</div>
-        `;
+
+        // OPTIMIZATION: Removed redundant innerHTML overwrite and premature append to oppContainer.
+        // This prevents XSS (by using creating elements above) and improves performance (batching).
         oppFragment.appendChild(div);
     });
     oppContainer.appendChild(oppFragment);
