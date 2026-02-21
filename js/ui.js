@@ -1,12 +1,38 @@
 // --- UI UPDATER ---
+let uiUpdatePending = false;
+
 function updateUI() {
+    // ⚡ Bolt: Debounce UI updates to prevent layout thrashing and redundant re-renders.
+    if (uiUpdatePending) return;
+    uiUpdatePending = true;
+
+    // Use requestAnimationFrame if available (Browser)
+    if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => {
+            performUpdateUI();
+            uiUpdatePending = false;
+        });
+    } else {
+        // Fallback for Test Environment (or very old browsers)
+        // In tests with mocked setTimeout, this executes synchronously immediately, preserving test behavior.
+        setTimeout(() => {
+            performUpdateUI();
+            uiUpdatePending = false;
+        }, 0);
+    }
+}
+
+function performUpdateUI() {
     const p = getCurrentPlayer();
 
     // Header
-    document.getElementById('turn-indicator').innerText = `Turn: ${p.name}`;
+    const turnIndicator = document.getElementById('turn-indicator');
+    if (turnIndicator) turnIndicator.innerText = `Turn: ${p.name}`;
 
     // Opponents
     const oppContainer = document.getElementById('opponents-container');
+    if (!oppContainer) return; // Safety check
+
     oppContainer.innerHTML = '';
     // Use DocumentFragment to batch DOM updates and minimize reflows
     const oppFragment = document.createDocumentFragment();
