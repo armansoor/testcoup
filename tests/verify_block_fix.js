@@ -42,6 +42,7 @@ class MockDocument {
         return this.elements[id];
     }
     createElement(tag) { return new MockElement(tag); }
+    createDocumentFragment() { return new MockElement('DOCUMENT_FRAGMENT'); }
     querySelector(sel) { return new MockElement('DIV'); }
     querySelectorAll(sel) { return []; }
 }

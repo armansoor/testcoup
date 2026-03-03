@@ -36,11 +36,6 @@ function shuffle(array) {
         const j = getSecureRandomIndex(i + 1);
         [array[i], array[j]] = [array[j], array[i]];
     }
-    // Double shuffle for "feel"
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = getSecureRandomIndex(i + 1);
-        [array[i], array[j]] = [array[j], array[i]];
-    }
 }
 
 function sleep(ms) {
