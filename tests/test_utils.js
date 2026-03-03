@@ -142,6 +142,37 @@ function runTests() {
         failures++;
     }
 
+    // Test 4: Sanitize Function
+    try {
+        console.log("\n--- Test 4: Sanitize Function ---");
+        const { sandbox } = createSandbox();
+        loadUtils(sandbox);
+
+        const testCases = [
+            { input: '<b>Hello</b>', expected: '&lt;b&gt;Hello&lt;&#x2F;b&gt;' },
+            { input: 'John & Jane', expected: 'John &amp; Jane' },
+            { input: '"Quoted"', expected: '&quot;Quoted&quot;' },
+            { input: "It's a trap", expected: 'It&#39;s a trap' },
+            { input: 'Complex <script>alert("XSS")</script>', expected: 'Complex &lt;script&gt;alert(&quot;XSS&quot;)&lt;&#x2F;script&gt;' },
+            { input: 'NoSpecialChars', expected: 'NoSpecialChars' },
+            { input: '', expected: '' },
+            { input: null, expected: '' },
+            { input: undefined, expected: '' }
+        ];
+
+        testCases.forEach(({ input, expected }) => {
+            const actual = sandbox.sanitize(input);
+            if (actual !== expected) {
+                throw new Error(`Sanitize failed for "${input}". Expected "${expected}", got "${actual}"`);
+            }
+        });
+
+        console.log("Passed: Sanitize function correctly escapes special characters.");
+    } catch (e) {
+        console.error("FAILED Test 4:", e);
+        failures++;
+    }
+
     if (failures > 0) {
         console.error(`\n=== ${failures} TESTS FAILED ===`);
         process.exit(1);
