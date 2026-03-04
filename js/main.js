@@ -30,13 +30,6 @@ if ('serviceWorker' in navigator) {
         }
     });
 
-    // Refresh page if controller changes (new SW activated)
-    let refreshing;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (refreshing) return;
-        window.location.reload();
-        refreshing = true;
-    });
 }
 
 // Global Click listener for Audio Resume
