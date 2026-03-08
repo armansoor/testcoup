@@ -69,19 +69,6 @@ function performUpdateUI() {
              }
         }
 
-        let cardHtml = '';
-        pl.cards.forEach(c => {
-            if (!c) return;
-            if (c.dead) cardHtml += `<span class="card-back dead"></span>`;
-            else {
-                if (isReplayMode) {
-                    cardHtml += `<span class="card-back replay-card" style="width:auto; min-width:30px; background:#ddd; color:#000; font-size:0.5rem; line-height:38px; overflow:hidden; vertical-align:middle;">${c.role.substr(0,3)}</span>`;
-                } else {
-                    cardHtml += `<span class="card-back"></span>`;
-                }
-            }
-        });
-
         // SECURITY FIX: Prevent XSS via player name
         const nameDiv = document.createElement('div');
         const strong = document.createElement('strong');
@@ -94,7 +81,28 @@ function performUpdateUI() {
         div.appendChild(coinsDiv);
 
         const cardsDiv = document.createElement('div');
-        cardsDiv.innerHTML = cardHtml; // Safe: cardHtml constructed from trusted ROLES
+        pl.cards.forEach(c => {
+            if (!c) return;
+            const span = document.createElement('span');
+            span.className = 'card-back';
+            if (c.dead) {
+                span.classList.add('dead');
+            } else if (isReplayMode) {
+                span.classList.add('replay-card');
+                // Apply styles directly to avoid innerHTML usage
+                span.style.width = 'auto';
+                span.style.minWidth = '30px';
+                span.style.background = '#ddd';
+                span.style.color = '#000';
+                span.style.fontSize = '0.5rem';
+                span.style.lineHeight = '38px';
+                span.style.overflow = 'hidden';
+                span.style.verticalAlign = 'middle';
+
+                span.innerText = c.role.substr(0, 3);
+            }
+            cardsDiv.appendChild(span);
+        });
         div.appendChild(cardsDiv);
 
         // OPTIMIZATION: Removed redundant innerHTML overwrite and premature append to oppContainer.
