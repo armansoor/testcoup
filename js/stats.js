@@ -129,13 +129,19 @@ function showStatsModal() {
 
     // Populate
     const summary = document.getElementById('stats-summary');
-    summary.innerHTML = `
-        <p>Games Played: ${playerStats.gamesPlayed}</p>
-        <p>Games Won: ${playerStats.gamesWon}</p>
-        <p>Win Rate: ${playerStats.gamesPlayed ? Math.round((playerStats.gamesWon/playerStats.gamesPlayed)*100) : 0}%</p>
-        <p>Current Streak: ${playerStats.streak}</p>
-        <p>Achievements: ${playerStats.achievements.length} / ${ACHIEVEMENTS.length}</p>
-    `;
+    summary.innerHTML = '';
+    const stats = [
+        `Games Played: ${playerStats.gamesPlayed}`,
+        `Games Won: ${playerStats.gamesWon}`,
+        `Win Rate: ${playerStats.gamesPlayed ? Math.round((playerStats.gamesWon/playerStats.gamesPlayed)*100) : 0}%`,
+        `Current Streak: ${playerStats.streak}`,
+        `Achievements: ${playerStats.achievements.length} / ${ACHIEVEMENTS.length}`
+    ];
+    stats.forEach(text => {
+        const p = document.createElement('p');
+        p.textContent = text;
+        summary.appendChild(p);
+    });
 
     const list = document.getElementById('achievements-list');
     list.innerHTML = '';
@@ -150,10 +156,16 @@ function showStatsModal() {
         div.style.borderRadius = '5px';
         div.style.opacity = unlocked ? '1' : '0.6';
 
-        div.innerHTML = `
-            <div style="font-weight: bold;">${ach.name} ${unlocked ? '✅' : '🔒'}</div>
-            <div style="font-size: 0.8rem;">${ach.desc}</div>
-        `;
+        const nameDiv = document.createElement('div');
+        nameDiv.style.fontWeight = 'bold';
+        nameDiv.textContent = `${ach.name} ${unlocked ? '✅' : '🔒'}`;
+        div.appendChild(nameDiv);
+
+        const descDiv = document.createElement('div');
+        descDiv.style.fontSize = '0.8rem';
+        descDiv.textContent = ach.desc;
+        div.appendChild(descDiv);
+
         list.appendChild(div);
     });
 
