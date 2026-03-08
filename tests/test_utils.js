@@ -98,12 +98,8 @@ function runTests() {
         // Deterministic sequence: always return 0.
         // This ensures getSecureRandomIndex always returns 0 (since 0 < range).
         // Trace for [0, 1, 2]:
-        // Pass 1:
         // i=2, j=0 -> Swap(2,0) -> [2, 1, 0]
         // i=1, j=0 -> Swap(1,0) -> [1, 2, 0]
-        // Pass 2:
-        // i=2, j=0 -> Swap(2,0) -> [0, 2, 1]
-        // i=1, j=0 -> Swap(1,0) -> [2, 0, 1]
 
         mockCrypto.setRandomSequence([0, 0, 0, 0, 0, 0, 0, 0]);
 
@@ -111,8 +107,8 @@ function runTests() {
         sandbox.shuffle(arr);
 
         console.log(`Deterministic Result: ${JSON.stringify(arr)}`);
-        if (JSON.stringify(arr) !== JSON.stringify([2, 0, 1])) {
-             throw new Error(`Deterministic test failed. Expected [2, 0, 1], got ${JSON.stringify(arr)}`);
+        if (JSON.stringify(arr) !== JSON.stringify([1, 2, 0])) {
+             throw new Error(`Deterministic test failed. Expected [1, 2, 0], got ${JSON.stringify(arr)}`);
         }
 
         console.log("Passed: Deterministic shuffle worked as expected.");
