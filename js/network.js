@@ -1,6 +1,37 @@
 let isNetworkGame = false;
 window.myPlayerId = null; // Used for rendering perspective (Host=1, Clients=assigned)
 
+const netUI = {
+    get onlineActions() { return this.getCached('online-actions'); },
+    get lobbyStatus() { return this.getCached('lobby-status'); },
+    get hostRoomInfo() { return this.getCached('host-room-info'); },
+    get connectionStatus() { return this.getCached('connection-status'); },
+    get myRoomCode() { return this.getCached('my-room-code'); },
+    get networkStartBtn() { return this.getCached('network-start-btn'); },
+    get pendingPlayersSection() { return this.getCached('pending-players-section'); },
+    get connectedPlayersList() { return this.getCached('connected-players-list'); },
+    get lobbyScreen() { return this.getCached('lobby-screen'); },
+    get gameScreen() { return this.getCached('game-screen'); },
+    get myPlayerName() { return this.getCached('my-player-name'); },
+    get allowRandomJoin() { return this.getCached('allow-random-join'); },
+    get hostIdInput() { return this.getCached('host-id-input'); },
+    get networkAiCount() { return this.getCached('network-ai-count'); },
+    get pendingPlayersList() { return this.getCached('pending-players-list'); },
+    get gameOverModal() { return this.getCached('game-over-modal'); },
+    get networkDifficulty() { return this.getCached('network-difficulty'); },
+    get actionPanel() { return this.getCached('action-panel'); },
+    get activePlayerName() { return this.getCached('active-player-name'); },
+    get gameLog() { return this.getCached('game-log'); },
+
+    cache: {},
+    getCached(id) {
+        if (!this.cache[id]) {
+            this.cache[id] = document.getElementById(id);
+        }
+        return this.cache[id];
+    }
+};
+
 const PEER_CONFIG = {
     config: {
         iceServers: [
@@ -39,7 +70,7 @@ function initHost() {
         return;
     }
 
-    const name = document.getElementById('my-player-name').value.trim();
+    const name = netUI.myPlayerName.value.trim();
     if (name.length < 3 || name.length > 20) {
         alert("Name must be between 3 and 20 characters!");
         return;
@@ -49,7 +80,7 @@ function initHost() {
         return;
     }
 
-    const allowRandom = document.getElementById('allow-random-join').checked;
+    const allowRandom = netUI.allowRandomJoin.checked;
     let roomId = null;
 
     if (!allowRandom) {
@@ -65,9 +96,9 @@ function initHost() {
         startHostPeer(roomId, false);
     } else {
         // Try to grab a public slot
-        document.getElementById('online-actions').classList.add('hidden');
-        document.getElementById('lobby-status').classList.remove('hidden');
-        document.getElementById('connection-status').innerText = "Reserving Public Slot...";
+        netUI.onlineActions.classList.add('hidden');
+        netUI.lobbyStatus.classList.remove('hidden');
+        netUI.connectionStatus.innerText = "Reserving Public Slot...";
 
         tryReservePublicSlot(1);
     }
@@ -113,21 +144,21 @@ function startHostPeer(customId, requireApproval) {
     netState.isHost = true;
     netState.requiresApproval = requireApproval;
 
-    document.getElementById('online-actions').classList.add('hidden');
-    document.getElementById('lobby-status').classList.remove('hidden');
-    document.getElementById('host-room-info').classList.remove('hidden');
-    document.getElementById('connection-status').innerText = "Initializing Network...";
+    netUI.onlineActions.classList.add('hidden');
+    netUI.lobbyStatus.classList.remove('hidden');
+    netUI.hostRoomInfo.classList.remove('hidden');
+    netUI.connectionStatus.innerText = "Initializing Network...";
 
     const peer = new Peer(customId, PEER_CONFIG);
     setupHostPeerEvents(peer, requireApproval);
 }
 
 function handleHostOpen(id, requireApproval) {
-    document.getElementById('my-room-code').innerText = id;
-    document.getElementById('connection-status').innerText = "Waiting for players...";
-    document.getElementById('network-start-btn').classList.remove('hidden');
+    netUI.myRoomCode.innerText = id;
+    netUI.connectionStatus.innerText = "Waiting for players...";
+    netUI.networkStartBtn.classList.remove('hidden');
     if (requireApproval) {
-        document.getElementById('pending-players-section').classList.remove('hidden');
+        netUI.pendingPlayersSection.classList.remove('hidden');
     }
     updateLobbyList();
 }
@@ -139,9 +170,9 @@ function setupHostPeerEvents(peer, requireApproval) {
     isNetworkGame = true;
 
     // Ensure UI is ready
-    document.getElementById('online-actions').classList.add('hidden');
-    document.getElementById('lobby-status').classList.remove('hidden');
-    document.getElementById('host-room-info').classList.remove('hidden');
+    netUI.onlineActions.classList.add('hidden');
+    netUI.lobbyStatus.classList.remove('hidden');
+    netUI.hostRoomInfo.classList.remove('hidden');
 
     // If Peer is already open (e.g. from tryReservePublicSlot), trigger open logic immediately
     if (peer.open) {
@@ -150,7 +181,7 @@ function setupHostPeerEvents(peer, requireApproval) {
 
     netState.peer.on('error', (err) => {
         console.error("PeerJS Error:", err);
-        const statusEl = document.getElementById('connection-status');
+        const statusEl = netUI.connectionStatus;
         if (statusEl) {
             let msg = `Error: ${err.type}`;
             if (err.type === 'peer-unavailable') msg += " (Host ID not found or offline)";
@@ -187,7 +218,7 @@ function handleClientDisconnect(peerId) {
     console.log(`Client ${client.name} disconnected. Starting grace period.`);
 
     // In Lobby: Remove immediately
-    if (document.getElementById('lobby-screen').classList.contains('active')) {
+    if (netUI.lobbyScreen.classList.contains('active')) {
          netState.clients.splice(clientIndex, 1);
          updateLobbyList();
          broadcastLobbyUpdate();
@@ -211,7 +242,7 @@ function handleClientDisconnect(peerId) {
 }
 
 function copyRoomCode() {
-    const code = document.getElementById('my-room-code').innerText;
+    const code = netUI.myRoomCode.innerText;
     navigator.clipboard.writeText(code).then(() => {
         alert("Room Code copied to clipboard!");
     }).catch(err => {
@@ -227,7 +258,7 @@ function joinGame(isSpectator = false) {
         return;
     }
 
-    const name = document.getElementById('my-player-name').value.trim();
+    const name = netUI.myPlayerName.value.trim();
     if (name.length < 3 || name.length > 20) {
         alert("Name must be between 3 and 20 characters!");
         return;
@@ -236,22 +267,22 @@ function joinGame(isSpectator = false) {
         alert("Name cannot contain spaces!");
         return;
     }
-    const hostId = document.getElementById('host-id-input').value.trim();
+    const hostId = netUI.hostIdInput.value.trim();
     if (!hostId) { alert("Please enter a Room Code"); return; }
 
     isNetworkGame = true;
     netState.isHost = false;
 
-    document.getElementById('online-actions').classList.add('hidden');
-    document.getElementById('lobby-status').classList.remove('hidden');
-    document.getElementById('connection-status').innerText = "Connecting to Host...";
-    document.getElementById('connected-players-list').innerHTML = ''; // Clear stale list
+    netUI.onlineActions.classList.add('hidden');
+    netUI.lobbyStatus.classList.remove('hidden');
+    netUI.connectionStatus.innerText = "Connecting to Host...";
+    netUI.connectedPlayersList.innerHTML = ''; // Clear stale list
 
     netState.peer = new Peer(null, PEER_CONFIG);
 
     netState.peer.on('error', (err) => {
         console.error("PeerJS Error:", err);
-        const statusEl = document.getElementById('connection-status');
+        const statusEl = netUI.connectionStatus;
         if (statusEl) {
             let msg = `Error: ${err.type}`;
             if (err.type === 'peer-unavailable') msg += " (Host ID not found or offline)";
@@ -274,7 +305,7 @@ function joinGame(isSpectator = false) {
             return;
         }
 
-        document.getElementById('connection-status').innerText = "Looking for Host...";
+        netUI.connectionStatus.innerText = "Looking for Host...";
 
         const conn = netState.peer.connect(hostId, {
             reliable: true // Improve reliability for data channel
@@ -284,7 +315,7 @@ function joinGame(isSpectator = false) {
         // Connection Timeout Safety (Extended for mobile networks)
         const timeout = setTimeout(() => {
             if (!conn.open) {
-                document.getElementById('connection-status').innerText = "Connection Failed: Timeout";
+                netUI.connectionStatus.innerText = "Connection Failed: Timeout";
                 alert("Connection timed out. Ensure Host is online and check firewalls.");
                 // Do not auto-reload immediately so user can read error
             }
@@ -292,7 +323,7 @@ function joinGame(isSpectator = false) {
 
         conn.on('open', () => {
             clearTimeout(timeout);
-            document.getElementById('connection-status').innerText = "Connected! Waiting for Host...";
+            netUI.connectionStatus.innerText = "Connected! Waiting for Host...";
             // Send RECONNECT flag if we suspect we were dropped?
             // Ideally, we just send JOIN and Host handles the rest.
             conn.send({ type: 'JOIN', name: name, isSpectator: isSpectator });
@@ -308,7 +339,7 @@ function joinGame(isSpectator = false) {
         conn.on('error', (err) => {
             clearTimeout(timeout);
             console.error("Connection Error:", err);
-            document.getElementById('connection-status').innerText = "Error: " + err;
+            netUI.connectionStatus.innerText = "Error: " + err;
         });
     });
 }
@@ -319,7 +350,7 @@ function findPublicGame() {
         return;
     }
 
-    const name = document.getElementById('my-player-name').value.trim();
+    const name = netUI.myPlayerName.value.trim();
     if (name.length < 3 || name.length > 20) {
         alert("Name must be between 3 and 20 characters!");
         return;
@@ -333,10 +364,10 @@ function findPublicGame() {
     netState.isHost = false;
     netState.isScanning = true;
 
-    document.getElementById('online-actions').classList.add('hidden');
-    document.getElementById('lobby-status').classList.remove('hidden');
-    document.getElementById('connection-status').innerText = "Initializing Scanner...";
-    document.getElementById('connected-players-list').innerHTML = '';
+    netUI.onlineActions.classList.add('hidden');
+    netUI.lobbyStatus.classList.remove('hidden');
+    netUI.connectionStatus.innerText = "Initializing Scanner...";
+    netUI.connectedPlayersList.innerHTML = '';
 
     netState.peer = new Peer(null, PEER_CONFIG);
 
@@ -364,7 +395,7 @@ function scanPublicSlotBlock(startIndex) {
     }
 
     const endIndex = Math.min(startIndex + SCAN_BLOCK_SIZE - 1, PUBLIC_ROOM_LIMIT);
-    document.getElementById('connection-status').innerText = `Scanning Rooms ${startIndex}-${endIndex}...`;
+    netUI.connectionStatus.innerText = `Scanning Rooms ${startIndex}-${endIndex}...`;
 
     // Master Block Timeout - Forces move to next block if nothing found
     if (netState.blockScanTimeout) clearTimeout(netState.blockScanTimeout);
@@ -394,8 +425,8 @@ function scanPublicSlotBlock(startIndex) {
 
                 // Proceed to Join
                 netState.hostConn = conn;
-                document.getElementById('connection-status').innerText = `Found Room ${i}! Joining...`;
-                const name = document.getElementById('my-player-name').value.trim();
+                netUI.connectionStatus.innerText = `Found Room ${i}! Joining...`;
+                const name = netUI.myPlayerName.value.trim();
                 conn.send({ type: 'JOIN', name: name, isSpectator: false });
             });
 
@@ -488,12 +519,12 @@ function handleNetworkData(data, conn) {
                 location.reload();
                 break;
             case 'JOIN_PENDING':
-                document.getElementById('connection-status').innerText = "Waiting for Host Approval...";
+                netUI.connectionStatus.innerText = "Waiting for Host Approval...";
                 break;
             case 'JOIN_ACCEPTED':
                 // Final success
                 netState.isScanning = false;
-                document.getElementById('connection-status').innerText = "Joined! Waiting for game start...";
+                netUI.connectionStatus.innerText = "Joined! Waiting for game start...";
                 break;
             case 'JOIN_REJECTED':
                 alert(data.message);
@@ -540,7 +571,7 @@ function handleJoinRequest(data, conn) {
     }
 
     // GAME STARTED CHECK
-    const gameInProgress = !document.getElementById('lobby-screen').classList.contains('active');
+    const gameInProgress = !netUI.lobbyScreen.classList.contains('active');
     if (gameInProgress && !data.isSpectator) {
         conn.send({
             type: 'JOIN_ERROR',
@@ -589,7 +620,7 @@ function handleJoinRequest(data, conn) {
     }
 
     // NEW JOIN
-    const hostName = document.getElementById('my-player-name').value.trim() || 'Host';
+    const hostName = netUI.myPlayerName.value.trim() || 'Host';
     const existingNames = netState.clients.map(c => c.name);
     existingNames.push(hostName);
 
@@ -674,12 +705,12 @@ function handleGameOver(data) {
 
 // --- LOBBY HELPERS ---
 function updateLobbyList() {
-    const list = document.getElementById('connected-players-list');
+    const list = netUI.connectedPlayersList;
     list.innerHTML = ''; // Clear
 
     // 1. Host (Self)
     if (netState.isHost) {
-        const myName = document.getElementById('my-player-name').value.trim() || 'Host';
+        const myName = netUI.myPlayerName.value.trim() || 'Host';
         const li = document.createElement('li');
         li.innerText = `${myName} (Host)`;
         li.style.color = '#4caf50';
@@ -718,7 +749,7 @@ function updateLobbyList() {
 
     // 3. AI Bots (Placeholder)
     if (netState.isHost) {
-        const aiCount = parseInt(document.getElementById('network-ai-count').value);
+        const aiCount = parseInt(netUI.networkAiCount.value);
         for(let i=1; i<=aiCount; i++) {
             const li = document.createElement('li');
             li.innerText = `Bot ${i} (AI)`;
@@ -728,10 +759,11 @@ function updateLobbyList() {
         }
 
         // 4. Pending Requests
-        const pendingList = document.getElementById('pending-players-list');
+        const pendingList = netUI.pendingPlayersList;
+        const pendingSection = netUI.pendingPlayersSection;
         pendingList.innerHTML = '';
         if (netState.pendingClients.length > 0) {
-            document.getElementById('pending-players-section').classList.remove('hidden');
+            pendingSection.classList.remove('hidden');
             netState.pendingClients.forEach(c => {
                 const li = document.createElement('li');
                 li.style.display = 'flex';
@@ -770,7 +802,7 @@ function updateLobbyList() {
              if (netState.requiresApproval) {
                  // Keep section visible if we are in approval mode?
                  // Maybe just hide if empty is cleaner.
-                 if (netState.pendingClients.length === 0) document.getElementById('pending-players-section').classList.add('hidden');
+                 if (netState.pendingClients.length === 0) pendingSection.classList.add('hidden');
              }
         }
     }
@@ -798,11 +830,11 @@ function kickPlayer(peerId) {
 }
 
 function broadcastLobbyUpdate() {
-    const hostName = document.getElementById('my-player-name').value.trim() || 'Host';
+    const hostName = netUI.myPlayerName.value.trim() || 'Host';
 
     // Include Bots in the broadcast list so clients see them too
     const bots = [];
-    const aiCount = parseInt(document.getElementById('network-ai-count').value);
+    const aiCount = parseInt(netUI.networkAiCount.value);
     for(let i=1; i<=aiCount; i++) bots.push(`Bot ${i} (AI)`);
 
     const names = [`${hostName} (Host)`, ...netState.clients.map(c => c.name), ...bots];
@@ -810,7 +842,7 @@ function broadcastLobbyUpdate() {
 }
 
 function updateClientLobby(names) {
-    const list = document.getElementById('connected-players-list');
+    const list = netUI.connectedPlayersList;
     list.innerHTML = '';
     names.forEach(n => {
         const li = document.createElement('li');
@@ -829,9 +861,14 @@ function startNetworkGame() {
     if (!netState.isHost) return;
 
     // Reset UI for restart
-    document.getElementById('game-over-modal').classList.add('hidden');
+    netUI.gameOverModal.classList.add('hidden');
 
-    const aiCount = parseInt(document.getElementById('network-ai-count').value);
+    const aiCount = parseInt(netUI.networkAiCount.value);
+    const hostName = netUI.myPlayerName.value.trim();
+    const difficulty = netUI.networkDifficulty.value;
+
+    const lobbyScreen = netUI.lobbyScreen;
+    const gameScreen = netUI.gameScreen;
 
     // Filter active PLAYERS (not spectators)
     const activePlayers = netState.clients.filter(c => c.status === 'connected' && !c.isSpectator);
@@ -862,7 +899,7 @@ function startNetworkGame() {
     shuffle(gameState.deck);
 
     // Host is Player 1
-    const hostName = document.getElementById('my-player-name').value.trim();
+    // hostName already declared above
     const hostP = new Player(1, hostName, false);
     gameState.players.push(hostP);
     myPlayerId = 1;
@@ -877,8 +914,7 @@ function startNetworkGame() {
     });
 
     // AI
-    // aiCount is already defined above
-    const difficulty = document.getElementById('network-difficulty').value;
+    // aiCount and difficulty are already defined above
     const startId = gameState.players.length + 1;
     for(let i=0; i<aiCount; i++) {
         // Keep Bot Names as is (Bot 1, Bot 2...)
@@ -905,8 +941,8 @@ function startNetworkGame() {
     }
 
     // UI Switch for Host
-    document.getElementById('lobby-screen').classList.remove('active');
-    document.getElementById('game-screen').classList.add('active');
+    lobbyScreen.classList.remove('active');
+    gameScreen.classList.add('active');
 
     // Broadcast Start to ALL (Players + Spectators)
     const initialState = serializeState();
@@ -931,14 +967,14 @@ function startNetworkGame() {
 }
 
 function setupClientGame(initialState) {
-    document.getElementById('lobby-screen').classList.remove('active');
-    document.getElementById('game-screen').classList.add('active');
-    document.getElementById('game-over-modal').classList.add('hidden');
+    netUI.lobbyScreen.classList.remove('active');
+    netUI.gameScreen.classList.add('active');
+    netUI.gameOverModal.classList.add('hidden');
 
     if (myPlayerId === -1) {
         // Spectator specific UI tweaks?
-        document.getElementById('action-panel').classList.add('hidden'); // Hide controls
-        document.getElementById('active-player-name').innerText = "Spectating Mode";
+        netUI.actionPanel.classList.add('hidden'); // Hide controls
+        netUI.activePlayerName.innerText = "Spectating Mode";
     }
 
     gameState.replayData = [];
@@ -1012,7 +1048,7 @@ function syncClientState(remoteState) {
     }
 
     // Refresh Logs
-    const logBox = document.getElementById('game-log');
+    const logBox = netUI.gameLog;
     logBox.innerHTML = '';
     gameState.log.forEach((msg, index) => {
         const div = document.createElement('div');
