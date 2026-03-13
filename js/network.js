@@ -97,7 +97,7 @@ function tryReservePublicSlot(index) {
         }
     });
 
-    tempPeer.on('open', (id) => {
+    tempPeer.on('open', () => {
         // Success! We have this slot.
         // We can't easily transfer this socket, but we can just use this peer instance.
         // But my architecture expects `startHostPeer` to create the peer usually.
@@ -345,7 +345,7 @@ function findPublicGame() {
         console.error("PeerJS Error:", err);
     });
 
-    netState.peer.on('open', (id) => {
+    netState.peer.on('open', () => {
         scanPublicSlotBlock(1);
     });
 }
