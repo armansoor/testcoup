@@ -5,12 +5,13 @@
  * Falls back to Math.random() if window.crypto is unavailable.
  */
 function getSecureRandomIndex(max) {
-    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+    const cryptoObj = (typeof window !== 'undefined' && window.crypto) || (typeof crypto !== 'undefined' && crypto);
+    if (cryptoObj && cryptoObj.getRandomValues) {
         const arr = new Uint32Array(1);
         const maxUint32 = 0xffffffff;
         const range = Math.floor(maxUint32 / max) * max;
         do {
-            window.crypto.getRandomValues(arr);
+            cryptoObj.getRandomValues(arr);
         } while (arr[0] >= range);
         return arr[0] % max;
     }
@@ -19,12 +20,27 @@ function getSecureRandomIndex(max) {
 }
 
 /**
+ * Generates a cryptographically secure random float between 0 (inclusive) and 1 (exclusive).
+ * Falls back to Math.random() if window.crypto is unavailable.
+ */
+function getSecureRandom() {
+    const cryptoObj = (typeof window !== 'undefined' && window.crypto) || (typeof crypto !== 'undefined' && crypto);
+    if (cryptoObj && cryptoObj.getRandomValues) {
+        const arr = new Uint32Array(1);
+        cryptoObj.getRandomValues(arr);
+        return arr[0] / 0x100000000;
+    }
+    return Math.random();
+}
+
+/**
  * Generates a cryptographically secure random hexadecimal string (e.g. for request IDs).
  */
 function generateSecureId() {
-    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+    const cryptoObj = (typeof window !== 'undefined' && window.crypto) || (typeof crypto !== 'undefined' && crypto);
+    if (cryptoObj && cryptoObj.getRandomValues) {
         const array = new Uint8Array(16);
-        window.crypto.getRandomValues(array);
+        cryptoObj.getRandomValues(array);
         return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
     }
     // Fallback

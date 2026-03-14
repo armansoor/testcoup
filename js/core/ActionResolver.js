@@ -108,7 +108,7 @@ async function processReactions() {
                     log(`${p.name} CHALLENGES ${actingP.name}!`, 'important');
                     const won = await resolveChallenge(actingP, p, ACTIONS[action.type].role);
                     if (won) {
-                        await resolveActionEffect();
+                        await resolveActionEffect(action);
                     } else {
                         nextTurn();
                     }
@@ -159,7 +159,7 @@ async function processReactions() {
                             const won = await resolveChallenge(p, challenger, blockerRole);
                             if (!won) {
                                 // Block failed, action proceeds
-                                await resolveActionEffect();
+                                await resolveActionEffect(action);
                             } else {
                                 // Block succeeded
                                 log(`Action BLOCKED.`);
@@ -179,7 +179,7 @@ async function processReactions() {
         }
 
         // 3. If no Challenge/Block, Resolve Action
-        await resolveActionEffect();
+        await resolveActionEffect(action);
 
     } catch (e) {
         console.error("Critical Error in processReactions:", e);
@@ -191,7 +191,7 @@ async function processReactions() {
 
 async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
     // Reveal logic
-    const hasCard = claimedPlayer.cards.some(c => c.role === claimedRole && !c.dead);
+    const hasCard = claimedPlayer.cards.some(c => c && c.role === claimedRole && !c.dead);
 
     if (hasCard) {
         log(`Challenge FAILED! ${claimedPlayer.name} HAS the ${claimedRole}!`, 'important');
@@ -201,7 +201,7 @@ async function resolveChallenge(claimedPlayer, challenger, claimedRole) {
         await loseInfluence(challenger);
 
         // Claimed player swaps card
-        const cardIdx = claimedPlayer.cards.findIndex(c => c.role === claimedRole && !c.dead);
+        const cardIdx = claimedPlayer.cards.findIndex(c => c && c.role === claimedRole && !c.dead);
         const oldCard = claimedPlayer.cards[cardIdx];
 
         // Return old card to deck FIRST
@@ -258,9 +258,9 @@ async function loseInfluence(player) {
 
     if (player.isAI) {
         // AI logic: lose card revealed or random
-        const aliveCards = player.cards.filter(c => !c.dead);
+        const aliveCards = player.cards.filter(c => c && !c.dead);
         if (aliveCards.length === 0) return; // Should be covered by above, but safe
-        const toKill = aliveCards[Math.floor(Math.random() * aliveCards.length)];
+        const toKill = aliveCards[getSecureRandomIndex(aliveCards.length)];
         // Find actual index
         const idx = player.cards.indexOf(toKill);
         await player.loseCard(idx);
@@ -274,8 +274,8 @@ async function loseInfluence(player) {
     }
 }
 
-async function resolveActionEffect() {
-    const act = gameState.currentAction;
+async function resolveActionEffect(act) {
+    if (!act) act = gameState.currentAction;
     const p = act.player;
     const t = act.target;
 
@@ -352,7 +352,7 @@ async function resolveActionEffect() {
                              else if (role === 'Ambassador') score = 1;
 
                              // Contextual Modifiers
-                             if (freshP.coins < 3 && role === 'Duke') score += 5; // Need money
+                             if (role === 'Duke') score += 10; // Always prioritize money/Duke for Broken AI
                              if (freshP.coins >= 7 && role === 'Contessa') score += 5; // Protect the win
                              if (freshP.coins >= 3 && freshP.coins < 7 && role === 'Assassin') score += 3; // Ready to kill
                              return score;

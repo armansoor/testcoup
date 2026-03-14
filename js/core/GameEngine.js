@@ -62,10 +62,10 @@ function startGame() {
             gameState.currentPlayerIndex = winnerIdx;
             log(`${lastWinnerName} (Previous Winner) takes the first turn.`, 'system');
         } else {
-             gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
+             gameState.currentPlayerIndex = getSecureRandomIndex(gameState.players.length);
         }
     } else {
-        gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
+        gameState.currentPlayerIndex = getSecureRandomIndex(gameState.players.length);
     }
 
     document.getElementById('lobby-screen').classList.remove('active');

@@ -146,6 +146,15 @@ function createInstance(config = {}) {
     // Override sleep to be instant
     sandbox.sleep = (ms) => Promise.resolve();
 
+    // Mock Human interactions to prevent hanging on promises
+    sandbox.askHumanToLoseCard = (player) => {
+        console.log(`[TEST] Auto-losing card for ${player.name}`);
+        return Promise.resolve(0);
+    };
+    sandbox.askHumanBlock = () => Promise.resolve(false);
+    sandbox.askHumanChallenge = () => Promise.resolve(false);
+    sandbox.askHumanExchange = (p, cards, count) => Promise.resolve(cards.slice(0, count).map(c => c.id));
+
     return sandbox;
 }
 

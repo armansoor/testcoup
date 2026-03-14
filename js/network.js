@@ -934,10 +934,10 @@ function startNetworkGame() {
             gameState.currentPlayerIndex = winnerIdx;
             // log(`${lastWinnerName} (Previous Winner) takes the first turn.`, 'system'); // log not ready?
         } else {
-             gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
+             gameState.currentPlayerIndex = getSecureRandomIndex(gameState.players.length);
         }
     } else {
-        gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
+        gameState.currentPlayerIndex = getSecureRandomIndex(gameState.players.length);
     }
 
     // UI Switch for Host
