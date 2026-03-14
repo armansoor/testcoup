@@ -1,4 +1,4 @@
-let gameState = {
+var gameState = {
     players: [],
     deck: [],
     currentPlayerIndex: 0,
@@ -8,9 +8,9 @@ let gameState = {
     replayData: []
 };
 
-let isReplayMode = false;
-let activeReplayData = [];
-let currentReplayIndex = 0;
+var isReplayMode = false;
+var activeReplayData = [];
+var currentReplayIndex = 0;
 
 var turnTimer = null;
 var TURN_LIMIT_SECONDS = 180;
@@ -66,59 +66,16 @@ class Player {
             return;
         }
 
-        // HEURISTICS
-        const canAssassinate = this.coins >= 3;
-        const hasDuke = this.hasRole('Duke');
-        const hasAssassin = this.hasRole('Assassin');
-        const hasCaptain = this.hasRole('Captain');
-
-        let action = 'Income';
-
         // Difficulty Logic
         if (this.difficulty === 'broken') {
-             // 1. Coup (Unblockable win condition)
+             // 1. Coup early (Unblockable win condition)
              if (this.coins >= 7) {
                  this.doCoup();
                  return;
              }
 
-             // PEAK AHEAD (Cheat): Check Deck
-             const topCards = gameState.deck.slice(-2);
-             const goodCards = ['Duke', 'Captain', 'Assassin', 'Contessa'];
-             const hasBadHand = this.cards.every(c => c.dead || !goodCards.includes(c.role));
-
-             // Exchange Priority: If hand is weak AND deck has good cards
-             if (hasBadHand && topCards.some(c => goodCards.includes(c.role))) {
-                 action = 'Exchange';
-             }
-
-             // SAFE PLAY: Only act if I have the role or it's unblockable (Coup)
-             // Prioritize Tax if I have Duke (Safe Income)
-             else if (this.hasRole('Duke')) {
-                 action = 'Tax';
-             }
-             // Prioritize Steal if I have Captain (Safe Steal) AND target has no block
-             else if (this.hasRole('Captain')) {
-                 let target = null;
-                 const opponents = gameState.players.filter(p => p.id !== this.id && p.alive && p.coins >= 2);
-                 opponents.sort((a, b) => b.coins - a.coins);
-
-                 for (let op of opponents) {
-                     const hasBlocker = op.cards.some(c => (c.role === 'Captain' || c.role === 'Ambassador') && !c.dead);
-                     if (!hasBlocker) {
-                         target = op;
-                         break;
-                     }
-                 }
-
-                 if (target) {
-                     handleActionSubmit('Steal', this, target);
-                     return;
-                 }
-             }
-             // Assassinate ONLY if I have Assassin AND target has no Contessa (Guaranteed Kill)
-             else if (this.coins >= 3 && this.hasRole('Assassin')) {
-                 let target = null;
+             // 2. Assassinate ONLY if I have Assassin AND target has no Contessa (Guaranteed Kill)
+             if (this.coins >= 3 && this.hasRole('Assassin')) {
                  const opponents = gameState.players.filter(p => p.id !== this.id && p.alive);
                  opponents.sort((a, b) => {
                      const aCards = a.cards.filter(c => !c.dead).length;
@@ -128,55 +85,82 @@ class Player {
                  });
 
                  for (let op of opponents) {
-                     const hasContessa = op.cards.some(c => c.role === 'Contessa' && !c.dead);
+                     const hasContessa = op.cards.some(c => c && c.role === 'Contessa' && !c.dead);
                      if (!hasContessa) {
-                         target = op;
-                         break;
+                         handleActionSubmit('Assassinate', this, op);
+                         return;
                      }
                  }
+             }
 
-                 if (target) {
-                     handleActionSubmit('Assassinate', this, target);
-                     return;
-                 }
-             } else if (this.coins >= 7) {
-                 this.doCoup();
+             // 3. Tax if I have Duke (Safe Income)
+             if (this.hasRole('Duke')) {
+                 handleActionSubmit('Tax', this, null);
                  return;
              }
 
-             // If no role-based action, default to Safe Income or Foreign Aid
-             if (action === 'Income') {
-                 // Check if anyone has a Duke to block Foreign Aid
-                 let dukeThreat = false;
-                 gameState.players.forEach(p => {
-                     if (p.id !== this.id && p.alive) {
-                         if (p.cards.some(c => c.role === 'Duke' && !c.dead)) dukeThreat = true;
-                     }
-                 });
+             // 4. Steal if I have Captain (Safe Steal) AND target has no block
+             if (this.hasRole('Captain')) {
+                 const opponents = gameState.players.filter(p => p.id !== this.id && p.alive && p.coins >= 2);
+                 opponents.sort((a, b) => b.coins - a.coins);
 
-                 if (!dukeThreat) {
-                     action = 'Foreign Aid';
-                 } else {
-                     action = 'Income'; // Safest fallback
+                 for (let op of opponents) {
+                     const hasBlocker = op.cards.some(c => c && (c.role === 'Captain' || c.role === 'Ambassador') && !c.dead);
+                     if (!hasBlocker) {
+                         handleActionSubmit('Steal', this, op);
+                         return;
+                     }
                  }
              }
 
-             handleActionSubmit(action, this, null);
+             // 5. Exchange Priority: If hand is weak AND deck peeking shows good cards
+             const topCards = gameState.deck.slice(-2);
+             const goodCards = ['Duke', 'Captain', 'Assassin'];
+             const hasBadHand = this.cards.every(c => c && (c.dead || !goodCards.includes(c.role)));
+
+             if (hasBadHand && topCards.some(c => c && goodCards.includes(c.role))) {
+                 handleActionSubmit('Exchange', this, null);
+                 return;
+             }
+
+             // 6. Foreign Aid if no one has Duke
+             let dukeThreat = false;
+             gameState.players.forEach(p => {
+                 if (p.id !== this.id && p.alive) {
+                     if (p.cards.some(c => c && c.role === 'Duke' && !c.dead)) dukeThreat = true;
+                 }
+             });
+
+             if (!dukeThreat) {
+                 handleActionSubmit('Foreign Aid', this, null);
+             } else {
+                 handleActionSubmit('Income', this, null);
+             }
              return;
-        } else if (this.difficulty === 'hardcore') {
+        }
+
+        // HEURISTICS for other difficulties
+        const canAssassinate = this.coins >= 3;
+        const hasDuke = this.hasRole('Duke');
+        const hasAssassin = this.hasRole('Assassin');
+        const hasCaptain = this.hasRole('Captain');
+
+        let action = 'Income';
+
+        if (this.difficulty === 'hardcore') {
             // GOD MODE: Win at all costs.
             if (this.coins >= 7) { this.doCoup(); return; }
 
             // Aggressive Assassination (High Bluff)
-            if (canAssassinate && (hasAssassin || Math.random() > 0.3)) {
+            if (canAssassinate && (hasAssassin || getSecureRandom() > 0.3)) {
                 action = 'Assassinate';
             }
             // Tax often (Bluff Duke)
-            else if (hasDuke || Math.random() > 0.4) {
+            else if (hasDuke || getSecureRandom() > 0.4) {
                 action = 'Tax';
             }
             // Steal if Captain or desperate
-            else if (hasCaptain || Math.random() > 0.5) {
+            else if (hasCaptain || getSecureRandom() > 0.5) {
                 action = 'Steal';
             }
             else {
@@ -187,11 +171,11 @@ class Player {
             if (this.coins >= 7) {
                 this.doCoup();
                 return;
-            } else if (canAssassinate && (hasAssassin || Math.random() > 0.4)) {
+            } else if (canAssassinate && (hasAssassin || getSecureRandom() > 0.4)) {
                 action = 'Assassinate'; // Real or bluff assassin
-            } else if (hasDuke || Math.random() > 0.3) {
+            } else if (hasDuke || getSecureRandom() > 0.3) {
                 action = 'Tax'; // Real or bluff tax
-            } else if (hasCaptain || Math.random() > 0.5) {
+            } else if (hasCaptain || getSecureRandom() > 0.5) {
                 action = 'Steal';
             } else {
                 action = 'Foreign Aid'; // Risky but fast
@@ -207,7 +191,7 @@ class Player {
             // Easy - Random
             const opts = ['Income', 'Foreign Aid', 'Tax'];
             if (this.coins >= 3) opts.push('Assassinate');
-            action = opts[Math.floor(Math.random() * opts.length)];
+            action = opts[getSecureRandomIndex(opts.length)];
         }
 
         let target = null;
@@ -259,7 +243,7 @@ class Player {
 
         if (this.difficulty === 'broken' && claimedRole) {
             const actor = actionObj.player;
-            const hasCard = actor.cards.some(c => c.role === claimedRole && !c.dead);
+            const hasCard = actor.cards.some(c => c && c.role === claimedRole && !c.dead);
             if (!hasCard) return true; // They are lying! Challenge!
             return false; // They are telling the truth. Never challenge.
         }
@@ -292,7 +276,7 @@ class Player {
             // Heuristic for Exchange (Ambassador)
             if (claimedRole === 'Ambassador') {
                  if (myCopies === 2) return true;
-                 if (myCopies === 1 && Math.random() > 0.7 && this.difficulty !== 'easy') return true;
+                 if (myCopies === 1 && getSecureRandom() > 0.7 && this.difficulty !== 'easy') return true;
             }
         }
 
@@ -300,11 +284,11 @@ class Player {
         if (actionObj.type === 'Tax') {
             const myDukes = this.cards.filter(c => c.role === 'Duke' && !c.dead).length;
             if (myDukes === 2) return true;
-            if ((this.difficulty === 'hard' || this.difficulty === 'hardcore') && myDukes === 1 && Math.random() > 0.5) return true;
+            if ((this.difficulty === 'hard' || this.difficulty === 'hardcore') && myDukes === 1 && getSecureRandom() > 0.5) return true;
         }
 
         // Random suspicion based on difficulty
-        return Math.random() > threshold;
+        return getSecureRandom() > threshold;
     }
 
     // AI DECISION: Should I Block?
@@ -340,16 +324,16 @@ class Player {
         // Hardcore: Block almost always if targeted by assassination (to survive)
         if (this.difficulty === 'hardcore') {
             if (actionObj.type === 'Assassinate') shouldBluff = true; // Desperate block
-            if (actionObj.type === 'Steal' && Math.random() > 0.3) shouldBluff = true;
-            if (actionObj.type === 'Foreign Aid' && Math.random() > 0.5) shouldBluff = true;
+            if (actionObj.type === 'Steal' && getSecureRandom() > 0.3) shouldBluff = true;
+            if (actionObj.type === 'Foreign Aid' && getSecureRandom() > 0.5) shouldBluff = true;
         }
 
-        if (this.difficulty === 'hard' && actionObj.type === 'Assassinate' && Math.random() > 0.2) shouldBluff = true;
-        if (this.difficulty === 'hard' && actionObj.type === 'Steal' && Math.random() > 0.5) shouldBluff = true;
+        if (this.difficulty === 'hard' && actionObj.type === 'Assassinate' && getSecureRandom() > 0.2) shouldBluff = true;
+        if (this.difficulty === 'hard' && actionObj.type === 'Steal' && getSecureRandom() > 0.5) shouldBluff = true;
 
         if (shouldBluff) {
             // Pick a random valid blocker role to claim
-            const randomRole = blockerRoles[Math.floor(Math.random() * blockerRoles.length)];
+            const randomRole = blockerRoles[getSecureRandomIndex(blockerRoles.length)];
             return randomRole;
         }
 
