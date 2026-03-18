@@ -297,8 +297,9 @@ function switchMode(mode) {
 
 function showHistory() {
     // Force switch to history screen from ANY state (Lobby or Game)
+    // This ensures that if history is opened during a match, the game screen is hidden.
     document.getElementById('lobby-screen').classList.remove('active');
-    document.getElementById('game-screen').classList.remove('active'); // Key fix
+    document.getElementById('game-screen').classList.remove('active');
     document.getElementById('history-screen').classList.add('active');
 
     const list = document.getElementById('history-list');
