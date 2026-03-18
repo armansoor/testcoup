@@ -169,6 +169,50 @@ function runTests() {
         failures++;
     }
 
+    // Test 5: Get Strongest Opponent
+    try {
+        console.log("\n--- Test 5: Get Strongest Opponent ---");
+        const { sandbox } = createSandbox();
+        loadUtils(sandbox);
+
+        const self = { id: 'player1', alive: true, cards: [{ dead: false }, { dead: false }], coins: 10 };
+
+        // Case 1: No opponents other than the current player
+        sandbox.gameState.players = [self];
+        let result = sandbox.getStrongestOpponent(self);
+        if (result !== null) throw new Error("Case 1 failed: Should return null when no opponents exist");
+
+        // Case 2: All other opponents are dead
+        const deadOpponent = { id: 'player2', alive: false, cards: [{ dead: true }, { dead: true }], coins: 5 };
+        sandbox.gameState.players = [self, deadOpponent];
+        result = sandbox.getStrongestOpponent(self);
+        if (result !== null) throw new Error("Case 2 failed: Should return null when all opponents are dead");
+
+        // Case 3: Multiple alive opponents with different alive card counts
+        const weakOpponent = { id: 'player3', alive: true, cards: [{ dead: false }, { dead: true }], coins: 15 };
+        const strongOpponent = { id: 'player4', alive: true, cards: [{ dead: false }, { dead: false }], coins: 5 };
+        sandbox.gameState.players = [self, weakOpponent, strongOpponent];
+        result = sandbox.getStrongestOpponent(self);
+        if (!result || result.id !== 'player4') throw new Error(`Case 3 failed: Expected player4 (2 cards), got ${result ? result.id : 'null'}`);
+
+        // Case 4: Multiple alive opponents with the same alive card count but different coin counts
+        const richOpponent = { id: 'player5', alive: true, cards: [{ dead: false }, { dead: false }], coins: 20 };
+        sandbox.gameState.players = [self, strongOpponent, richOpponent];
+        result = sandbox.getStrongestOpponent(self);
+        if (!result || result.id !== 'player5') throw new Error(`Case 4 failed: Expected player5 (20 coins), got ${result ? result.id : 'null'}`);
+
+        // Case 5: Current player has the most cards/coins (should still return strongest opponent)
+        const veryWeakOpponent = { id: 'player6', alive: true, cards: [{ dead: false }, { dead: true }], coins: 2 };
+        sandbox.gameState.players = [self, veryWeakOpponent];
+        result = sandbox.getStrongestOpponent(self);
+        if (!result || result.id !== 'player6') throw new Error(`Case 5 failed: Expected player6, got ${result ? result.id : 'null'}`);
+
+        console.log("Passed: getStrongestOpponent correctly identifies the most dangerous opponent.");
+    } catch (e) {
+        console.error("FAILED Test 5:", e);
+        failures++;
+    }
+
     if (failures > 0) {
         console.error(`\n=== ${failures} TESTS FAILED ===`);
         process.exit(1);
