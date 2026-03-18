@@ -1,3 +1,18 @@
+// --- UI CACHE (Reaction Panel) ---
+const reactionUI = {
+    get panel() { return this.getCached('reaction-panel'); },
+    get title() { return this.getCached('reaction-title'); },
+    get buttons() { return this.getCached('reaction-buttons'); },
+
+    cache: {},
+    getCached(id) {
+        if (!this.cache[id]) {
+            this.cache[id] = document.getElementById(id);
+        }
+        return this.cache[id];
+    }
+};
+
 // --- UI UPDATER ---
 let uiUpdatePending = false;
 
@@ -369,9 +384,9 @@ function downloadLog() {
 
 function askHumanChallenge(player, actionObj) {
     return new Promise(resolve => {
-        const panel = document.getElementById('reaction-panel');
-        const title = document.getElementById('reaction-title');
-        const btns = document.getElementById('reaction-buttons');
+        const panel = reactionUI.panel;
+        const title = reactionUI.title;
+        const btns = reactionUI.buttons;
 
         panel.classList.remove('hidden');
 
@@ -420,9 +435,9 @@ function askHumanChallenge(player, actionObj) {
 
 function askHumanBlock(player, actionObj) {
     return new Promise(resolve => {
-        const panel = document.getElementById('reaction-panel');
-        const title = document.getElementById('reaction-title');
-        const btns = document.getElementById('reaction-buttons');
+        const panel = reactionUI.panel;
+        const title = reactionUI.title;
+        const btns = reactionUI.buttons;
 
         panel.classList.remove('hidden');
         const blockerRoles = ACTIONS[actionObj.type].blockedBy;
@@ -467,9 +482,9 @@ function askHumanBlock(player, actionObj) {
 
 function askHumanToLoseCard(player) {
     return new Promise(resolve => {
-        const panel = document.getElementById('reaction-panel');
-        const title = document.getElementById('reaction-title');
-        const btns = document.getElementById('reaction-buttons');
+        const panel = reactionUI.panel;
+        const title = reactionUI.title;
+        const btns = reactionUI.buttons;
 
         panel.classList.remove('hidden');
         title.innerText = `${player.name}, choose a card to lose:`;
@@ -493,9 +508,9 @@ function askHumanToLoseCard(player) {
 
 function askContinue(message) {
     return new Promise(resolve => {
-        const panel = document.getElementById('reaction-panel');
-        const title = document.getElementById('reaction-title');
-        const btns = document.getElementById('reaction-buttons');
+        const panel = reactionUI.panel;
+        const title = reactionUI.title;
+        const btns = reactionUI.buttons;
 
         panel.classList.remove('hidden');
         title.innerText = message;
@@ -513,9 +528,9 @@ function askContinue(message) {
 
 function askHumanExchange(player, cardsToChoose, keepCount = 1) {
     return new Promise(resolve => {
-        const panel = document.getElementById('reaction-panel');
-        const title = document.getElementById('reaction-title');
-        const btns = document.getElementById('reaction-buttons');
+        const panel = reactionUI.panel;
+        const title = reactionUI.title;
+        const btns = reactionUI.buttons;
 
         panel.classList.remove('hidden');
 
