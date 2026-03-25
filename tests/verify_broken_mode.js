@@ -331,6 +331,7 @@ async function verifyBrokenMode() {
     // Try forcing 4 coins to be safe? (>=3)
     ai5.coins = 4;
 
+    test5.handleActionSubmit = (type, player, target) => { gs5.currentAction = { type, player, target }; };
     await ai5.decideAction();
     console.log(`AI (Assassin vs Vulnerable) chose: ${gs5.currentAction.type}`);
     if (gs5.currentAction.type !== 'Assassinate') throw new Error("Broken AI failed to take guaranteed Assassination!");

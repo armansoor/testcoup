@@ -37,6 +37,8 @@ def verify_logic():
 
         # Give ourselves 3 coins to Assassinate (cheat via console for testing)
         page.evaluate("gameState.players[0].coins = 3; updateUI();")
+        time.sleep(1)
+        page.evaluate("window.prompt = () => 'Bot 1'")
 
         # Perform Assassinate on Bot
         page.click("button:has-text('Assassinate')")
