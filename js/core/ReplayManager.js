@@ -1,5 +1,19 @@
 // Replay Management
 
+function validateHistory(history) {
+    if (!Array.isArray(history)) return [];
+    return history.filter(entry => {
+        return entry &&
+               typeof entry === 'object' &&
+               typeof entry.id === 'number' &&
+               typeof entry.date === 'string' &&
+               typeof entry.winner === 'string' &&
+               Array.isArray(entry.players) &&
+               Array.isArray(entry.log) &&
+               Array.isArray(entry.replayData);
+    });
+}
+
 function saveMatchHistory(winner) {
     const entry = {
         id: Date.now(),
@@ -13,7 +27,10 @@ function saveMatchHistory(winner) {
     let history = [];
     try {
         const stored = localStorage.getItem('coup_match_history');
-        if (stored) history = JSON.parse(stored);
+        if (stored) {
+            history = JSON.parse(stored);
+            history = validateHistory(history);
+        }
     } catch(e) { console.error(e); }
 
     // Add new (unshift)
@@ -30,7 +47,10 @@ function loadReplay(idx) {
     let history = [];
     try {
         const stored = localStorage.getItem('coup_match_history');
-        if (stored) history = JSON.parse(stored);
+        if (stored) {
+            history = JSON.parse(stored);
+            history = validateHistory(history);
+        }
     } catch(e) {}
 
     const entry = history[idx];

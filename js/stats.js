@@ -38,7 +38,14 @@ function loadStats() {
     try {
         const s = localStorage.getItem('coup_stats');
         if (s) {
-            playerStats = JSON.parse(s);
+            const parsed = JSON.parse(s);
+            // Validation
+            if (parsed && typeof parsed === 'object') {
+                if (typeof parsed.gamesPlayed === 'number') playerStats.gamesPlayed = parsed.gamesPlayed;
+                if (typeof parsed.gamesWon === 'number') playerStats.gamesWon = parsed.gamesWon;
+                if (typeof parsed.streak === 'number') playerStats.streak = parsed.streak;
+                if (Array.isArray(parsed.achievements)) playerStats.achievements = parsed.achievements;
+            }
         }
     } catch (e) {
         console.error("Failed to load stats:", e);
