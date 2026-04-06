@@ -261,6 +261,36 @@ button.disabled-force { opacity: 0.3; pointer-events: none; }
     outline: none;
 }
 
+/* --- MATCH HISTORY --- */
+.history-item {
+    background: #333;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    border: 1px solid #444;
+    text-align: left;
+}
+
+.history-winner {
+    font-weight: bold;
+    color: #4caf50;
+}
+
+.history-date {
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+.history-players {
+    font-size: 0.8rem;
+}
+
+.history-replay-btn {
+    margin-top: 5px;
+    background: #2196F3;
+    width: auto;
+}
+
 /* --- TURN TIMER --- */
 #turn-timer-bar {
     width: 0%;
