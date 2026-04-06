@@ -55,7 +55,7 @@ function loadReplay(idx) {
 
     const entry = history[idx];
     if (!entry || !entry.replayData || entry.replayData.length === 0) {
-        alert("Replay data missing or empty.");
+        showNotification("Replay data missing or empty.", "error");
         return;
     }
 
