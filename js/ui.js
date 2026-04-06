@@ -319,7 +319,14 @@ function showHistory() {
     let history = [];
     try {
         const stored = localStorage.getItem('coup_match_history');
-        if (stored) history = JSON.parse(stored);
+        if (stored) {
+            history = JSON.parse(stored);
+            if (typeof validateHistory === 'function') {
+                history = validateHistory(history);
+            } else if (!Array.isArray(history)) {
+                history = [];
+            }
+        }
     } catch(e) {}
 
     if (history.length === 0) {
