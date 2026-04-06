@@ -708,15 +708,15 @@ function updateLobbyList() {
     const list = netUI.connectedPlayersList;
     list.innerHTML = ''; // Clear
 
+    const fragment = document.createDocumentFragment();
+
     // 1. Host (Self)
     if (netState.isHost) {
         const myName = netUI.myPlayerName.value.trim() || 'Host';
         const li = document.createElement('li');
         li.innerText = `${myName} (Host)`;
         li.style.color = '#4caf50';
-        list.appendChild(li);
-    } else {
-        // Client view handled by updateClientLobby
+        fragment.appendChild(li);
     }
 
     // 2. Connected Clients
@@ -744,7 +744,7 @@ function updateLobbyList() {
             li.appendChild(kickBtn);
         }
 
-        list.appendChild(li);
+        fragment.appendChild(li);
     });
 
     // 3. AI Bots (Placeholder)
@@ -755,15 +755,20 @@ function updateLobbyList() {
             li.innerText = `Bot ${i} (AI)`;
             li.style.color = '#aaa';
             li.style.fontStyle = 'italic';
-            list.appendChild(li);
+            fragment.appendChild(li);
         }
+    }
 
+    list.appendChild(fragment);
+
+    if (netState.isHost) {
         // 4. Pending Requests
         const pendingList = netUI.pendingPlayersList;
         const pendingSection = netUI.pendingPlayersSection;
         pendingList.innerHTML = '';
         if (netState.pendingClients.length > 0) {
             pendingSection.classList.remove('hidden');
+            const pendingFragment = document.createDocumentFragment();
             netState.pendingClients.forEach(c => {
                 const li = document.createElement('li');
                 li.style.display = 'flex';
@@ -793,8 +798,9 @@ function updateLobbyList() {
                 btnGroup.appendChild(btnReject);
                 li.appendChild(span);
                 li.appendChild(btnGroup);
-                pendingList.appendChild(li);
+                pendingFragment.appendChild(li);
             });
+            pendingList.appendChild(pendingFragment);
         } else {
              // Keep hidden if empty, or just empty list?
              // Logic in handleJoinRequest unhides it.
