@@ -84,7 +84,7 @@ function performUpdateUI() {
              }
         }
 
-        // SECURITY FIX: Prevent XSS via player name
+        // Prevent XSS via player name
         const nameDiv = document.createElement('div');
         const strong = document.createElement('strong');
         strong.innerText = pl.name;
@@ -329,23 +329,29 @@ function showHistory() {
 
     history.forEach((entry, idx) => {
         const div = document.createElement('div');
-        div.style.background = '#333';
-        div.style.padding = '10px';
-        div.style.marginBottom = '10px';
-        div.style.borderRadius = '5px';
-        div.style.border = '1px solid #444';
+        div.className = 'history-item';
 
-        const date = new Date(entry.date).toLocaleString();
+        const winnerDiv = document.createElement('div');
+        winnerDiv.className = 'history-winner';
+        winnerDiv.innerText = `Winner: ${entry.winner}`;
+        div.appendChild(winnerDiv);
 
-        const safeWinner = sanitize(entry.winner);
-        const safePlayers = entry.players.map(p => sanitize(p)).join(', ');
+        const dateDiv = document.createElement('div');
+        dateDiv.className = 'history-date';
+        dateDiv.innerText = new Date(entry.date).toLocaleString();
+        div.appendChild(dateDiv);
 
-        div.innerHTML = `
-            <div style="font-weight:bold; color:#4caf50;">Winner: ${safeWinner}</div>
-            <div style="font-size:0.8rem; color:#aaa;">${date}</div>
-            <div style="font-size:0.8rem;">Players: ${safePlayers}</div>
-            <button class="small-btn" onclick="loadReplay(${idx})" style="margin-top:5px; background:#2196F3; width: auto;">Watch Replay</button>
-        `;
+        const playersDiv = document.createElement('div');
+        playersDiv.className = 'history-players';
+        playersDiv.innerText = `Players: ${entry.players.join(', ')}`;
+        div.appendChild(playersDiv);
+
+        const replayBtn = document.createElement('button');
+        replayBtn.className = 'small-btn history-replay-btn';
+        replayBtn.innerText = 'Watch Replay';
+        replayBtn.onclick = () => loadReplay(idx);
+        div.appendChild(replayBtn);
+
         list.appendChild(div);
     });
 }
