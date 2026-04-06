@@ -11,11 +11,11 @@ function startGame() {
     netState.peer = null;
 
     if (humanCount + aiCount < 2) {
-        alert("Minimum 2 players required!");
+        showNotification("Minimum 2 players required!", "error");
         return;
     }
     if (humanCount + aiCount > 6) {
-        alert("Maximum 6 players allowed!");
+        showNotification("Maximum 6 players allowed!", "error");
         return;
     }
 

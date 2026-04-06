@@ -214,6 +214,34 @@ function log(msg, type='') {
     }
 }
 
+function showNotification(message, type = 'info', callback = null) {
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        document.body.appendChild(container);
+    }
+
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerText = message;
+
+    container.appendChild(notification);
+
+    const remove = () => {
+        notification.classList.add('fade-out');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+            if (callback) callback();
+        }, 500);
+    };
+
+    // Auto-remove after 3 seconds
+    setTimeout(remove, 3000);
+}
+
 function triggerAnimation(element, animClass) {
     if (!element) return;
     element.classList.remove(animClass);

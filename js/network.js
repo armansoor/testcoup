@@ -66,17 +66,17 @@ const SCAN_BLOCK_SIZE = 10;
 // --- HOST LOGIC ---
 function initHost() {
     if (!navigator.onLine) {
-        alert("Internet connection required for Online Multiplayer.");
+        showNotification("Internet connection required for Online Multiplayer.", "error");
         return;
     }
 
     const name = netUI.myPlayerName.value.trim();
     if (name.length < 3 || name.length > 20) {
-        alert("Name must be between 3 and 20 characters!");
+        showNotification("Name must be between 3 and 20 characters!", "error");
         return;
     }
     if (name.includes(' ')) {
-        alert("Name cannot contain spaces!");
+        showNotification("Name cannot contain spaces!", "error");
         return;
     }
 
@@ -89,7 +89,7 @@ function initHost() {
         if (roomId) {
             roomId = roomId.trim().replace(/[^a-zA-Z0-9_-]/g, ''); // Sanitize
             if (roomId.length < 3) {
-                alert("Custom Room Name too short. Using auto-generated ID.");
+                showNotification("Custom Room Name too short. Using auto-generated ID.");
                 roomId = null;
             }
         }
@@ -106,7 +106,7 @@ function initHost() {
 
 function tryReservePublicSlot(index) {
     if (index > PUBLIC_ROOM_LIMIT) {
-        alert("All Public Slots are full! Creating a private room instead.");
+        showNotification("All Public Slots are full! Creating a private room instead.");
         startHostPeer(null, true); // Fallback to random ID, but still require approval?
                                    // Actually if it's private ID, random join won't find it.
                                    // So disable approval.
@@ -123,7 +123,7 @@ function tryReservePublicSlot(index) {
             tryReservePublicSlot(index + 1);
         } else {
             console.error("Public Slot Error:", err);
-            alert("Network Error: " + err.type);
+            showNotification("Network Error: " + err.type, "error");
             tempPeer.destroy();
         }
     });
@@ -190,7 +190,7 @@ function setupHostPeerEvents(peer, requireApproval) {
             statusEl.innerText = msg;
             statusEl.style.color = 'red';
         }
-        alert("Network Error: " + err.type + "\n" + (err.message || ""));
+        showNotification("Network Error: " + err.type + "\n" + (err.message || ""), "error");
     });
 
     netState.peer.on('open', (id) => {
@@ -244,31 +244,31 @@ function handleClientDisconnect(peerId) {
 function copyRoomCode() {
     const code = netUI.myRoomCode.innerText;
     navigator.clipboard.writeText(code).then(() => {
-        alert("Room Code copied to clipboard!");
+        showNotification("Room Code copied to clipboard!");
     }).catch(err => {
         console.error('Failed to copy: ', err);
-        alert("Failed to copy code.");
+        showNotification("Failed to copy code.", "error");
     });
 }
 
 // --- CLIENT LOGIC ---
 function joinGame(isSpectator = false) {
     if (!navigator.onLine) {
-        alert("Internet connection required for Online Multiplayer.");
+        showNotification("Internet connection required for Online Multiplayer.", "error");
         return;
     }
 
     const name = netUI.myPlayerName.value.trim();
     if (name.length < 3 || name.length > 20) {
-        alert("Name must be between 3 and 20 characters!");
+        showNotification("Name must be between 3 and 20 characters!", "error");
         return;
     }
     if (name.includes(' ')) {
-        alert("Name cannot contain spaces!");
+        showNotification("Name cannot contain spaces!", "error");
         return;
     }
     const hostId = netUI.hostIdInput.value.trim();
-    if (!hostId) { alert("Please enter a Room Code"); return; }
+    if (!hostId) { showNotification("Please enter a Room Code", "error"); return; }
 
     isNetworkGame = true;
     netState.isHost = false;
@@ -293,15 +293,14 @@ function joinGame(isSpectator = false) {
             statusEl.innerText = msg;
             statusEl.style.color = 'red';
         }
-        alert("Network Error: " + err.type + "\n" + (err.message || ""));
+        showNotification("Network Error: " + err.type + "\n" + (err.message || ""), "error");
         // location.reload(); // Don't reload immediately so user can read error
     });
 
     netState.peer.on('open', (id) => {
         // Prevent self-connection
         if (id === hostId) {
-            alert("You cannot join yourself! Share the code with another device.");
-            location.reload();
+            showNotification("You cannot join yourself! Share the code with another device.", "error", () => location.reload());
             return;
         }
 
@@ -316,7 +315,7 @@ function joinGame(isSpectator = false) {
         const timeout = setTimeout(() => {
             if (!conn.open) {
                 netUI.connectionStatus.innerText = "Connection Failed: Timeout";
-                alert("Connection timed out. Ensure Host is online and check firewalls.");
+                showNotification("Connection timed out. Ensure Host is online and check firewalls.", "error");
                 // Do not auto-reload immediately so user can read error
             }
         }, 15000);
@@ -332,8 +331,7 @@ function joinGame(isSpectator = false) {
         conn.on('data', (data) => handleNetworkData(data, conn));
 
         conn.on('close', () => {
-            alert("Disconnected from Host");
-            location.reload();
+            showNotification("Disconnected from Host", "error", () => location.reload());
         });
 
         conn.on('error', (err) => {
@@ -346,17 +344,17 @@ function joinGame(isSpectator = false) {
 
 function findPublicGame() {
     if (!navigator.onLine) {
-        alert("Internet connection required for Online Multiplayer.");
+        showNotification("Internet connection required for Online Multiplayer.", "error");
         return;
     }
 
     const name = netUI.myPlayerName.value.trim();
     if (name.length < 3 || name.length > 20) {
-        alert("Name must be between 3 and 20 characters!");
+        showNotification("Name must be between 3 and 20 characters!", "error");
         return;
     }
     if (name.includes(' ')) {
-        alert("Name cannot contain spaces!");
+        showNotification("Name cannot contain spaces!", "error");
         return;
     }
 
@@ -389,8 +387,7 @@ function scanPublicSlotBlock(startIndex) {
     cleanupBlockScan(null);
 
     if (startIndex > PUBLIC_ROOM_LIMIT) {
-        alert("No public games found. Try creating one!");
-        location.reload();
+        showNotification("No public games found. Try creating one!", "info", () => location.reload());
         return;
     }
 
@@ -515,8 +512,7 @@ function handleNetworkData(data, conn) {
                 // Resume scan from next block? Or next index?
                 // Simpler: Just restart scan from next index relative to this one?
                 // Or just Alert and reload for simplicity in this edge case.
-                alert(data.message);
-                location.reload();
+                showNotification(data.message, "error", () => location.reload());
                 break;
             case 'JOIN_PENDING':
                 netUI.connectionStatus.innerText = "Waiting for Host Approval...";
@@ -527,12 +523,10 @@ function handleNetworkData(data, conn) {
                 netUI.connectionStatus.innerText = "Joined! Waiting for game start...";
                 break;
             case 'JOIN_REJECTED':
-                alert(data.message);
-                location.reload();
+                showNotification(data.message, "error", () => location.reload());
                 break;
             case 'KICKED':
-                alert(data.message);
-                location.reload();
+                showNotification(data.message, "error", () => location.reload());
                 break;
         }
     }
@@ -875,7 +869,7 @@ function startNetworkGame() {
 
     // Check Minimum Players (Host + at least 1 other)
     if (activePlayers.length + aiCount < 1) {
-        alert("You need at least 1 other player (Human or AI) to start!");
+        showNotification("You need at least 1 other player (Human or AI) to start!", "error");
         return;
     }
 

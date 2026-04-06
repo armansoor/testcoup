@@ -8,14 +8,17 @@ function submitAction(actionType) {
 
     // FORCED COUP CHECK
     if (p.coins >= 10 && actionType !== 'Coup') {
-        alert("You have 10+ coins. You MUST Coup!");
+        showNotification("You have 10+ coins. You MUST Coup!", "error");
         return;
     }
 
     // NETWORK CLIENT LOGIC
     if (isNetworkGame && !netState.isHost) {
         if (p.id !== myPlayerId) return; // Not my turn
-        if (ACTIONS[actionType].cost > p.coins) { alert("Not enough coins!"); return; }
+        if (ACTIONS[actionType].cost > p.coins) {
+            showNotification("Not enough coins!", "error");
+            return;
+        }
         if (actionType === 'Coup' && p.coins < 7) return;
 
         let targetId = null;
@@ -39,7 +42,7 @@ function submitAction(actionType) {
 
     // Validation
     if (ACTIONS[actionType].cost > p.coins) {
-        alert("Not enough coins!");
+        showNotification("Not enough coins!", "error");
         return;
     }
     if (actionType === 'Coup' && p.coins < 7) return;
